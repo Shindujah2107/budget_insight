@@ -1,0 +1,107 @@
+# Integration-test profile.
+#
+# Modelled on application-local.yml: H2 in PostgreSQL mode, Hibernate creating the schema,
+# Flyway off. Two deliberate differences from local:
+#
+#   stub.enabled is FALSE. InsightsStubModeGuard refuses to start when stub mode is on outside
+#   its permitted profile list, and "test" is not on that list -- correctly, since the guard is
+#   fail-closed by design. More to the point, an integration test that asserted against fixture
+#   data would be asserting against the fixtures rather than against the service.
+#
+#   security.gateway-auth-enabled is TRUE. It is the deployed posture in every AWS environment,
+#   so it is the posture the authorisation tests have to run against. Individual test classes
+#   override it to false with @SpringBootTest(properties = ...) where the disabled path is what
+#   is under test.
+spring:
+  datasource:
+    url: jdbc:h2:mem:budgetinsights-it;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+  flyway:
+    enabled: false
+
+moipay:
+  # Explicit rather than inherited: the CORS allowlist is under test, and a test that silently
+  # picked up whatever the default happened to be would pass through a change that widened it.
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:8083
+  security:
+    origin-verify:
+      enabled: false
+      enforce: false
+      secret: ""
+  budget-insights:
+    enabled: true
+    currency: LKR
+    zone: Asia/Colombo
+    lookback-months: 6
+    device-hash-salt: "integration-test-salt-not-a-secret"
+    budget:
+      enabled: true
+    manual:
+      enabled: true
+    consent:
+      enabled: true
+      version: "1.0"
+    ingest:
+      enabled: true
+      max-batch-size: 200
+      rate-limit-messages: 5000
+      rate-limit-window-seconds: 60
+      accepted-message-types: []
+    compliance:
+      max-batch-size: 200
+      rate-limit-messages: 5000
+      rate-limit-window-seconds: 60
+      clock-skew-minutes: 10
+    # On in tests so the routes are exercised; the key is a test value, not a secret.
+    format-discovery:
+      enabled: true
+      samples-enabled: true
+      user-hash-key: "integration-test-format-key-not-a-secret-000"
+    activity:
+      enabled: true
+    alerts:
+      enabled: true
+    recommendations:
+      enabled: true
+      needs-pct: 50
+      wants-pct: 30
+      savings-pct: 20
+      trailing-months: 3
+      needs:
+        - BILLS_UTILITIES
+        - UTILITIES
+        - TRANSPORT
+        - HEALTH_CARE
+        - EDUCATION
+        - WORK
+      wants:
+        - DINING_OUT
+        - ENTERTAINMENT
+        - SHOPPING
+        - SUBSCRIPTIONS
+        - TRAVEL
+        - GIFTS_DONATION
+        - GYM
+        - PERSONAL_CARE
+      savings:
+        - DEBT_PAYMENTS
+    stub:
+      enabled: false
+    security:
+      gateway-auth-enabled: true
+      # A test-only value, and not a secret: it exists so a test can present a matching header.
+      # Production values arrive from Secrets Manager via GATEWAY_INTERNAL_TOKEN.
+      gateway-internal-token: integration-test-gateway-token
+
+logging:
+  level:
+    com.moipay.budgetinsights: INFO
+    org.springframework.security: INFO

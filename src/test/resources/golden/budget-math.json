@@ -1,0 +1,125 @@
+{
+  "_comment": [
+    "BI-35 golden file for the budget arithmetic.",
+    "Every expected value here was worked out by hand from the rules, not captured from a run.",
+    "That is the point: a golden file generated from the implementation pins whatever the code",
+    "does today, bug included. These pin what the code is supposed to do, so a change to the",
+    "arithmetic has to be argued for rather than re-recorded.",
+    "Amounts and percentages are compared as strings because the scale is part of the contract:",
+    "a utilisation of 51.7 and one of 51.70 are the same number and a different answer."
+  ],
+
+  "days": [
+    {
+      "name": "the first day of the period counts as one day elapsed, not zero",
+      "periodStart": "2026-09-01", "periodEnd": "2026-09-30", "today": "2026-09-01",
+      "elapsed": 1, "remaining": 29,
+      "text": "1 day into your budget · 29 days left"
+    },
+    {
+      "name": "mid-month",
+      "periodStart": "2026-09-01", "periodEnd": "2026-09-30", "today": "2026-09-05",
+      "elapsed": 5, "remaining": 25,
+      "text": "5 days into your budget · 25 days left"
+    },
+    {
+      "name": "the last day leaves one day, and says day rather than days",
+      "periodStart": "2026-09-01", "periodEnd": "2026-09-30", "today": "2026-09-29",
+      "elapsed": 29, "remaining": 1,
+      "text": "29 days into your budget · 1 day left"
+    },
+    {
+      "name": "the closing day is fully elapsed",
+      "periodStart": "2026-09-01", "periodEnd": "2026-09-30", "today": "2026-09-30",
+      "elapsed": 30, "remaining": 0,
+      "text": "30 days into your budget · 0 days left"
+    },
+    {
+      "name": "a month already gone does not keep counting",
+      "periodStart": "2026-09-01", "periodEnd": "2026-09-30", "today": "2026-10-15",
+      "elapsed": 30, "remaining": 0,
+      "text": "30 days into your budget · 0 days left"
+    },
+    {
+      "name": "a month not yet begun is zero elapsed, not negative",
+      "periodStart": "2026-09-01", "periodEnd": "2026-09-30", "today": "2026-08-20",
+      "elapsed": 0, "remaining": 30,
+      "text": "0 days into your budget · 30 days left"
+    },
+    {
+      "name": "February in a leap year has 29 days",
+      "periodStart": "2028-02-01", "periodEnd": "2028-02-29", "today": "2028-02-29",
+      "elapsed": 29, "remaining": 0,
+      "text": "29 days into your budget · 0 days left"
+    },
+    {
+      "name": "the leap day itself is one day in",
+      "periodStart": "2028-02-01", "periodEnd": "2028-02-29", "today": "2028-02-01",
+      "elapsed": 1, "remaining": 28,
+      "text": "1 day into your budget · 28 days left"
+    },
+    {
+      "name": "February in a common year has 28",
+      "periodStart": "2026-02-01", "periodEnd": "2026-02-28", "today": "2026-02-28",
+      "elapsed": 28, "remaining": 0,
+      "text": "28 days into your budget · 0 days left"
+    }
+  ],
+
+  "utilisation": [
+    { "name": "the design's figure", "spent": "15500.00", "limit": "30000.00", "pct": "51.7" },
+    { "name": "nothing spent", "spent": "0.00", "limit": "30000.00", "pct": "0.0" },
+    { "name": "exactly at target", "spent": "30000.00", "limit": "30000.00", "pct": "100.0" },
+    { "name": "half again over", "spent": "45000.00", "limit": "30000.00", "pct": "150.0" },
+    { "name": "rounds down below the half", "spent": "3333.00", "limit": "10000.00", "pct": "33.3" },
+    { "name": "rounds up at the half", "spent": "3335.00", "limit": "10000.00", "pct": "33.4" }
+  ],
+
+  "perDay": [
+    { "name": "even division", "amount": "15500.00", "days": 5, "perDay": "3100.00" },
+    { "name": "recurring decimal is cut to two places", "amount": "1000.00", "days": 7, "perDay": "142.86" },
+    { "name": "a trailing half is kept as two places", "amount": "10.00", "days": 4, "perDay": "2.50" },
+    { "name": "zero days is treated as one, never a division by zero", "amount": "100.00", "days": 0, "perDay": "100.00" }
+  ],
+
+  "variance": [
+    { "name": "exactly on, with no tolerance", "average": "100.00", "ideal": "100.00", "tolerancePct": 0, "variance": "ON" },
+    { "name": "a rupee over, with no tolerance", "average": "101.00", "ideal": "100.00", "tolerancePct": 0, "variance": "ABOVE" },
+    { "name": "a rupee under, with no tolerance", "average": "99.00", "ideal": "100.00", "tolerancePct": 0, "variance": "UNDER" },
+    { "name": "inside a ten percent band", "average": "105.00", "ideal": "100.00", "tolerancePct": 10, "variance": "ON" },
+    { "name": "at the top of the band is still on", "average": "110.00", "ideal": "100.00", "tolerancePct": 10, "variance": "ON" },
+    { "name": "just past the top of the band", "average": "111.00", "ideal": "100.00", "tolerancePct": 10, "variance": "ABOVE" },
+    { "name": "at the bottom of the band is still on", "average": "90.00", "ideal": "100.00", "tolerancePct": 10, "variance": "ON" },
+    { "name": "just past the bottom of the band", "average": "89.00", "ideal": "100.00", "tolerancePct": 10, "variance": "UNDER" }
+  ],
+
+  "capState": [
+    { "name": "no limit set", "spent": "500.00", "limit": null, "thresholdPct": null, "defaultThresholdPct": 80, "state": null },
+    { "name": "a zero limit is not a limit", "spent": "500.00", "limit": "0.00", "thresholdPct": null, "defaultThresholdPct": 80, "state": null },
+    { "name": "exactly at the cap is exceeded, not approaching", "spent": "1000.00", "limit": "1000.00", "thresholdPct": null, "defaultThresholdPct": 80, "state": "EXCEEDED" },
+    { "name": "past the cap", "spent": "1001.00", "limit": "1000.00", "thresholdPct": null, "defaultThresholdPct": 80, "state": "EXCEEDED" },
+    { "name": "exactly at the default threshold", "spent": "800.00", "limit": "1000.00", "thresholdPct": null, "defaultThresholdPct": 80, "state": "APPROACHING" },
+    { "name": "one rupee below the threshold is nothing at all", "spent": "799.00", "limit": "1000.00", "thresholdPct": null, "defaultThresholdPct": 80, "state": null },
+    { "name": "a per-category threshold overrides the default", "spent": "500.00", "limit": "1000.00", "thresholdPct": 50, "defaultThresholdPct": 80, "state": "APPROACHING" }
+  ],
+
+  "status": [
+    { "name": "past the target", "utilisationPct": "100.1", "variance": "ON", "status": "OVER_BUDGET" },
+    { "name": "exactly at the target is not over it", "utilisationPct": "100.0", "variance": "ABOVE", "status": "AHEAD_OF_PACE" },
+    { "name": "spending faster than the days allow", "utilisationPct": "50.0", "variance": "ABOVE", "status": "AHEAD_OF_PACE" },
+    { "name": "on pace", "utilisationPct": "50.0", "variance": "ON", "status": "ON_TRACK" },
+    { "name": "under pace still reads as on track", "utilisationPct": "50.0", "variance": "UNDER", "status": "ON_TRACK" },
+    { "name": "over budget outranks a slow pace", "utilisationPct": "150.0", "variance": "UNDER", "status": "OVER_BUDGET" }
+  ],
+
+  "median": [
+    { "name": "no history at all", "values": [], "median": "0.00" },
+    { "name": "one month", "values": ["5.00"], "median": "5.00" },
+    { "name": "three months", "values": ["1.00", "2.00", "3.00"], "median": "2.00" },
+    { "name": "four months averages the middle pair", "values": ["1.00", "2.00", "3.00", "4.00"], "median": "2.50" },
+    { "name": "one big month does not become a habit", "values": ["0.00", "0.00", "10000.00"], "median": "0.00" },
+    { "name": "two months of the same spend is the habit", "values": ["0.00", "523491.00", "523491.00"], "median": "523491.00" },
+    { "name": "unsorted input is sorted first", "values": ["3.00", "1.00", "2.00"], "median": "2.00" },
+    { "name": "the scale is forced to two places", "values": ["1.005"], "median": "1.01" }
+  ]
+}

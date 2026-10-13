@@ -1,0 +1,39 @@
+{
+  "_comment": [
+    "BI-35 golden file for share allocation.",
+    "The DIP's test-plan line is 'golden files for share rounding to exactly 100', and that is",
+    "what this pins. Two kinds of case:",
+    "  exact  - inputs whose shares are determined by arithmetic alone, whatever the rounding",
+    "           policy is, so the expected list can be written down honestly.",
+    "  sums   - awkward inputs where the individual shares depend on the largest-remainder rule.",
+    "           Only the invariant is asserted: the shares add up to exactly 100, which is the",
+    "           property the screen depends on and the one a naive round-each-independently",
+    "           implementation breaks.",
+    "Writing expected per-element values for the second group would pin the current algorithm",
+    "rather than the requirement, and would have to be rewritten the next time it is tuned."
+  ],
+
+  "exact": [
+    { "name": "no spend at all", "amounts": [], "shares": [] },
+    { "name": "a single category takes all of it", "amounts": ["100.00"], "shares": [100.0] },
+    { "name": "an even split", "amounts": ["50.00", "50.00"], "shares": [50.0, 50.0] },
+    { "name": "three quarters and a quarter", "amounts": ["75.00", "25.00"], "shares": [75.0, 25.0] },
+    { "name": "a tenth each", "amounts": ["1.00", "1.00", "1.00", "1.00", "1.00", "1.00", "1.00", "1.00", "1.00", "1.00"],
+      "shares": [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0] },
+    { "name": "a category with nothing in it gets nothing", "amounts": ["100.00", "0.00"], "shares": [100.0, 0.0] }
+  ],
+
+  "sums": [
+    { "name": "three equal thirds, the classic case that rounds to 99.9", "amounts": ["1.00", "1.00", "1.00"] },
+    { "name": "seven equal sevenths", "amounts": ["1.00", "1.00", "1.00", "1.00", "1.00", "1.00", "1.00"] },
+    { "name": "six equal sixths", "amounts": ["1.00", "1.00", "1.00", "1.00", "1.00", "1.00"] },
+    { "name": "one large and three small", "amounts": ["1000.00", "1.00", "1.00", "1.00"] },
+    { "name": "the design's seventeen categories, all different",
+      "amounts": ["980.00", "980.00", "980.00", "980.00", "630.00", "510.00", "280.00", "275.00",
+                  "190.00", "175.00", "160.00", "155.00", "140.00", "95.00", "70.00", "45.00", "13.00"] },
+    { "name": "amounts that differ by a cent",
+      "amounts": ["33.33", "33.33", "33.34"] },
+    { "name": "a long tail of very small shares",
+      "amounts": ["10000.00", "3.00", "3.00", "3.00", "3.00", "3.00", "3.00", "3.00", "3.00", "3.00"] }
+  ]
+}

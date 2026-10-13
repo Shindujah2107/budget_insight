@@ -1,0 +1,122 @@
+# Local development. Hibernate creates the schema; Flyway stays off, exactly as the
+# sibling services do locally.
+spring:
+  datasource:
+    url: jdbc:h2:mem:budgetinsights;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+
+moipay:
+  budget-insights:
+    enabled: true
+    # BI-36 device compliance reporting has no release flag; this is what makes it available.
+    # Without a salt the route answers 501, which would leave the one endpoint the Android client
+    # cannot integrate against locally. Not a secret and never used anywhere real.
+    device-hash-salt: "local-dev-salt-not-a-secret"
+    # BI-36 tunables. Generous for the same reason ingest's are: a developer replaying a fixture
+    # queue should not be throttled by a control that exists to catch a looping handset.
+    compliance:
+      max-batch-size: 200
+      rate-limit-messages: 5000
+      rate-limit-window-seconds: 60
+      clock-skew-minutes: 10
+    # R1 manual entry, on locally so the add/edit/delete screens can be exercised.
+    manual:
+      enabled: true
+    # R2 release gate. On locally so the budget endpoints are reachable.
+    budget:
+      enabled: true
+    # R3 consent endpoints, on locally so the consent screen can be built against them.
+    consent:
+      enabled: true
+      version: "1.0"
+    # R4 ingest, on locally so the Android client can integrate against the real contract.
+    # The allowlist and parser templates are unseeded, so reference sync answers with empty
+    # lists until the labelled sample set arrives -- that is the correct answer, not a fault.
+    ingest:
+      enabled: true
+      max-batch-size: 200
+      # Deliberately generous locally: a developer replaying a fixture queue should not be
+      # throttled by a control that exists to catch a looping handset.
+      rate-limit-messages: 5000
+      rate-limit-window-seconds: 60
+      accepted-message-types: []
+    # R5 activity chart, on locally. Note the chart draws from bi_account.instrument_type, so
+    # spend with no account shows in neither series -- see unattributedTotal on the response.
+    activity:
+      enabled: true
+    # R6 threshold alerts, on locally so the alert list can be built against real behaviour.
+    alerts:
+      enabled: true
+    # R6 recommendations, on locally.
+    recommendations:
+      enabled: true
+      needs-pct: 50
+      wants-pct: 30
+      savings-pct: 20
+      trailing-months: 3
+      # The 50/30/20 mapping, approved 20 September 2026. A business rule, not a property of the
+      # category, which is why it lives here: changing a bucket is a config change, not a release.
+      #
+      # OTHER and TRANSFERS are deliberately in NO list. OTHER is what the categoriser falls back
+      # to when it cannot tell, and bucketing it would distort every percentage with spend nobody
+      # has classified. A TRANSFERS row might be saving, supporting family, or moving money between
+      # the customer's own accounts -- this service cannot see which, and guessing would be worse
+      # than reporting it separately. Both are returned under `unbucketed` so the parts still sum
+      # to the whole.
+      needs:
+        - BILLS_UTILITIES
+        - UTILITIES
+        - TRANSPORT
+        - HEALTH_CARE
+        - EDUCATION
+        - WORK
+      wants:
+        - DINING_OUT
+        - ENTERTAINMENT
+        - SHOPPING
+        - SUBSCRIPTIONS
+        - TRAVEL
+        - GIFTS_DONATION
+        - GYM
+        - PERSONAL_CARE
+      savings:
+        - DEBT_PAYMENTS
+    # OFF as of the R7 preflight, and this is a behaviour change worth reading.
+    #
+    # Stub mode exists so the frontend could integrate against the published contract before
+    # the logic behind it existed. For R1-R6 that logic now exists. Leaving it on gave local
+    # a split personality: /summary, /breakdown and /activity answered from fixtures while
+    # /alerts and /recommendations -- which never had fixtures -- answered from the database,
+    # so a developer was looking at two different systems through one screen and could not
+    # tell which. Local now serves live data throughout.
+    #
+    # Set this back to true to get the fixture set again; the guard still permits it here.
+    stub:
+      enabled: false
+    export:
+      retention-hours: 24
+    jobs:
+      # Off locally: a purge firing under a debugger, or two local instances racing over one
+      # database, is noise rather than a useful signal.
+      enabled: false
+      retention-cron: "0 15 2 * * *"
+      refresh-cron: "0 45 2 * * *"
+    security:
+      gateway-auth-enabled: false
+      # Local-only placeholder, not a secret and not used anywhere else: with
+      # gateway-auth-enabled false above, nothing in this profile consults it. Every
+      # deployed environment injects GATEWAY_INTERNAL_TOKEN from Secrets Manager.
+      gateway-internal-token: ${GATEWAY_INTERNAL_TOKEN:local-dev-placeholder}
+
+logging:
+  level:
+    com.moipay.budgetinsights: DEBUG

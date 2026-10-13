@@ -1,0 +1,133 @@
+name: AWS Staging — Build & Deploy budget-insights
+
+# Deploys budget-insights to the AWS Staging ECS cluster (Mumbai / ap-south-1).
+# Triggers ONLY when the `dev` branch is merged into `main` (via a merged PR).
+# Pushes to main from any other branch do not deploy to staging.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths-ignore:
+      - "*.md"
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (default: sha of current commit)"
+        required: false
+
+env:
+  AWS_REGION:       ap-south-1
+  ECR_REPOSITORY:   moipay-staging/budget-insights
+  ECS_CLUSTER:      moipay-staging-cluster
+  ECS_SERVICE:      budget-insights
+  ECS_TASK_FAMILY:  moipay-staging-budget-insights
+  CONTAINER_NAME:   budget-insights
+  JAVA_VERSION:     "21"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  id-token: write   # Required for OIDC token exchange
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    # Only deploy on a merged dev->main PR, or a manual dispatch.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'dev')
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Build & test with Maven
+        run: mvn clean package -q
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-BudgetInsights-Deploy
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag || format('sha-{0}', github.event.pull_request.merge_commit_sha || github.sha) }}
+        run: |
+          IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker build --platform linux/amd64 -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          # No `latest` tag. The ECR repository is created with
+          # image_tag_mutability = "IMMUTABLE", so the second push of `latest`
+          # is refused and fails the job -- after the real image has already
+          # been pushed. Nothing consumes `latest` either: the deploy job below
+          # pins the immutable sha- tag through the `image` output. A moving tag
+          # on an immutable repository is a contradiction, not a convenience.
+
+  deploy:
+    name: Deploy to ECS (aws-staging)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: aws-staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-BudgetInsights-ECS-Deploy
+
+      - name: Fetch current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_TASK_FAMILY }} \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Update image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build-and-push.outputs.image }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
+
+      - name: Deployment summary
+        run: |
+          echo "### AWS Staging Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ needs.build-and-push.outputs.image }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: ${{ env.ECS_CLUSTER }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service**: ${{ env.ECS_SERVICE }}" >> $GITHUB_STEP_SUMMARY

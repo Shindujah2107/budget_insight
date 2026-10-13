@@ -1,0 +1,22 @@
+# Line endings are a property of this repository, not of whoever checked it out.
+#
+# Without this, a Windows clone (core.autocrlf=true) writes CRLF into the working
+# tree while the index holds LF, and every text file reports as modified forever --
+# with no content difference. It also matters beyond tidiness: these files are read
+# by the Docker build and by SQL and shell tooling that can behave differently when
+# a stray CR arrives at end of line.
+#
+# eol=lf overrides core.autocrlf, so the working tree is LF on every platform.
+
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF to be executable by cmd.exe.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# Never touch binaries.
+*.jar  binary
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+*.ico  binary

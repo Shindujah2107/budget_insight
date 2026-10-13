@@ -1,0 +1,168 @@
+spring:
+  application:
+    name: moipay-budget-insights
+
+  jpa:
+    open-in-view: false
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # Flyway is OFF by default (local keeps Hibernate ddl-auto). aws-dev/aws-staging
+  # profiles turn it on and switch ddl-auto to none.
+  flyway:
+    enabled: false
+
+server:
+  port: 8087
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+moipay:
+  # Browser origins permitted to call this service. Localhost only here; real origins are set
+  # per environment through CORS_ALLOWED_ORIGINS on the task definition. The mobile app is a
+  # native client, sends no Origin header, and is unaffected by this list.
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8083}
+  budget-insights:
+    # admin.username / admin.password are deliberately absent. They previously carried literal
+    # values here, which gave any run without an AWS profile a known HTTP Basic login over every
+    # endpoint. With nothing configured the account is created with an unrecorded random password
+    # and cannot be authenticated as; set BUDGET_INSIGHTS_ADMIN_USERNAME and
+    # BUDGET_INSIGHTS_ADMIN_PASSWORD where the non-gateway path is actually needed.
+    # Everything below ships OFF. The feature is enabled per environment, never by default.
+    enabled: false
+    lookback-months: 6
+    currency: LKR
+    default-category-alert-threshold-pct: 80
+    masked-card-to-backend-enabled: false
+    device-hash-salt: ""
+    # Day counts on the budget ring are worked out here, not in the container's UTC.
+    zone: Asia/Colombo
+    pace-tolerance-pct: 0
+    # R1 release gate: adding, correcting and removing transactions by hand.
+    # DIP line 1648 names this flag and the service shipped without it, which left manual
+    # entry as the one release with no rollback of its own. Off, the three write routes
+    # answer 501 and every read path is untouched.
+    manual:
+      enabled: false
+    # Per-release gate beneath the master switch. R2: monthly target and summary.
+    budget:
+      enabled: false
+    # R3: consent, and the data-rights routes beneath it. `version` is the policy
+    # version in force -- raising it invalidates every existing consent at once.
+    consent:
+      enabled: false
+      version: "1.0"
+    # R4 release gate: SMS ingest and the device reference sync.
+    ingest:
+      enabled: false
+      max-batch-size: 200
+      rate-limit-messages: 600
+      rate-limit-window-seconds: 60
+      # Empty means any well-formed message type is accepted. Narrow it per environment once
+      # Compliance answers whether account-balance messages are in scope (dependency D-3).
+      accepted-message-types: []
+    # R5 release gate: the payment activity chart and its account filter.
+    activity:
+      enabled: false
+    # R6 release gate: threshold alerts. In-app only -- no SMS, push or email.
+    alerts:
+      enabled: false
+    # BI-36: POST /compliance/events, the route a handset reports an OTP or PIN it detected and
+    # destroyed on. Deliberately has NO release flag -- it records a control that is already
+    # running on every handset, and a flag would only buy the option of running the control and
+    # not recording it. What withholds it is device-hash-salt: with none set the route answers
+    # 501 and the device holds its queue.
+    compliance:
+      max-batch-size: 200
+      rate-limit-messages: 600
+      rate-limit-window-seconds: 60
+      # How far ahead of the server a device's clock may be. occurred_at is the device's
+      # timestamp, so that a handset offline for a day does not file yesterday under today.
+      clock-skew-minutes: 10
+    # R6: 50/30/20 recommendations. The percentages are shares of the customer's monthly target,
+    # not of income -- Budget Insights never sees income.
+    recommendations:
+      enabled: false
+      needs-pct: 50
+      wants-pct: 30
+      savings-pct: 20
+      trailing-months: 3
+      # The 50/30/20 mapping, approved 20 September 2026. A business rule, not a property of the
+      # category, which is why it lives here: changing a bucket is a config change, not a release.
+      #
+      # OTHER and TRANSFERS are deliberately in NO list. OTHER is what the categoriser falls back
+      # to when it cannot tell, and bucketing it would distort every percentage with spend nobody
+      # has classified. A TRANSFERS row might be saving, supporting family, or moving money between
+      # the customer's own accounts -- this service cannot see which, and guessing would be worse
+      # than reporting it separately. Both are returned under `unbucketed` so the parts still sum
+      # to the whole.
+      needs:
+        - BILLS_UTILITIES
+        - UTILITIES
+        - TRANSPORT
+        - HEALTH_CARE
+        - EDUCATION
+        - WORK
+      wants:
+        - DINING_OUT
+        - ENTERTAINMENT
+        - SHOPPING
+        - SUBSCRIPTIONS
+        - TRAVEL
+        - GIFTS_DONATION
+        - GYM
+        - PERSONAL_CARE
+      savings:
+        - DEBT_PAYMENTS
+    stub:
+      enabled: false
+    # SMS format discovery: learning bank SMS formats no template reads, without receiving any
+    # message. Phase 1 (enabled) accepts daily counts per sender; Phase 2 (samples-enabled)
+    # accepts message skeletons -- vocabulary ids and placeholders, never text -- and needs
+    # Compliance sign-off, the consent text that covers it (raise consent.version with it), and
+    # user-hash-key from Secrets Manager (32+ characters; never rotate it while samples exist).
+    # A format is shown to Super Admins only once min-distinct-users (floor 5) have sent it.
+    format-discovery:
+      enabled: false
+      samples-enabled: false
+      min-distinct-users: 5
+      sample-ttl-days: 90
+      stat-retention-days: 90
+      max-stats-per-request: 100
+      max-samples-per-request: 20
+      max-samples-per-user-per-day: 50
+      user-hash-key: ${BI_FORMAT_USER_HASH_KEY:}
+    # BI-27: how long a generated export stays downloadable before the retention job removes it.
+    # This is the whole privacy position on exports -- an export is a second copy of everything the
+    # service holds about one customer, and its lifetime is the only thing limiting the exposure.
+    export:
+      retention-hours: 24
+    # BI-29 / BI-30 scheduled jobs. Deliberately NOT beneath the master feature flag: data already
+    # captured must go on being expired whether or not customers can see the screen. `enabled` is
+    # for local development, not a production control.
+    jobs:
+      enabled: true
+      retention-cron: "0 15 2 * * *"
+      refresh-cron: "0 45 2 * * *"
+
+logging:
+  level:
+    com.moipay.budgetinsights: INFO

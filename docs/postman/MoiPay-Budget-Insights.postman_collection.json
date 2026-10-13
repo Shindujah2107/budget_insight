@@ -1,0 +1,4214 @@
+{
+  "info": {
+    "name": "MoiPay — Budget Insights (MIP-8)",
+    "description": "Every route Budget Insights publishes, grouped by the release that introduced it (BI-31).\n\nAUTHENTICATION. The gateway validates the customer's JWT, strips Authorization, and injects X-Gateway-Token, X-User-Id and X-Tenant. This service never sees a JWT and has no scopes: the token proves the request came through the gateway, X-User-Id says who it is for, and every repository query is scoped by that id. Both halves are load-bearing — a valid token with no X-User-Id is refused, and so is an X-User-Id with no token.\n\nFLAGS. moipay.budget-insights.enabled is the master switch: with it off every route answers 404, as though the feature were not in the build. Each release has its own child flag, and with a child flag off its routes answer 501 — the tab is there and one capability inside it is withdrawn. 404 and 501 are different promises and clients should treat them differently.\n\nOWNERSHIP. Another customer's row answers 404, never 403. A 403 would confirm the row exists, which is itself a disclosure.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "R1 — Categories, manual transactions and the breakdown",
+      "description": "Ships behind moipay.budget-insights.manual.enabled. With the flag off the three write routes answer 501 and every read here is untouched.",
+      "item": [
+        {
+          "name": "Spending breakdown",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/breakdown?from=2026-09-01&to=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "breakdown"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-09-01",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2026-09-30",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "The ranked breakdown for a period. Omit from/to for the current month — that is the only shape the aggregate cache stores."
+          }
+        },
+        {
+          "name": "Transactions in one category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/breakdown/{{categoryId}}/transactions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "breakdown",
+                "{{categoryId}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "The expanded rows behind a category. Paginated with the platform's standard page/size."
+          }
+        },
+        {
+          "name": "Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "categories"
+              ]
+            },
+            "description": "The 17 seeded categories in display order, with their icon keys. Shared reference data — the same for every customer."
+          }
+        },
+        {
+          "name": "Linked accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "accounts"
+              ]
+            },
+            "description": "Masked tails only, four digits at most. Drives the All Accounts filter."
+          }
+        },
+        {
+          "name": "Add a transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "transactions"
+              ]
+            },
+            "description": "Manual entry. clientRef is the caller's idempotency key — replaying the same one returns the original row rather than creating a second.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1250.0,\n  \"currency\": \"LKR\",\n  \"direction\": \"DEBIT\",\n  \"merchant\": \"Coffee Shop\",\n  \"txnDate\": \"2026-09-14\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"clientRef\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Correct a transaction",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Partial update. Re-categorising writes an audit row and raises CATEGORY_OVERRIDDEN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1300.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete a transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Soft delete. The row keeps its audit trail and stops counting towards every aggregate."
+          }
+        }
+      ]
+    },
+    {
+      "name": "R2 — Monthly budget and the summary ring",
+      "description": "Behind moipay.budget-insights.budget.enabled.",
+      "item": [
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/summary?period=2026-09&simulateNoBudget=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "2026-09",
+                  "disabled": true
+                },
+                {
+                  "key": "simulateNoBudget",
+                  "value": "false",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "The ring: spend against target, utilisation, pace and the days text. Answers with budgetSet=false rather than an error when no target is set."
+          }
+        },
+        {
+          "name": "Read the budget",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/budget?period=2026-09",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "budget"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "2026-09",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "The target and any per-category limits for a period."
+          }
+        },
+        {
+          "name": "Set the budget",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/budget",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "budget"
+              ]
+            },
+            "description": "Upsert. alertThresholdPct defaults to the configured value (80) when omitted.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"2026-09\",\n  \"overallLimit\": 30000.0,\n  \"currency\": \"LKR\",\n  \"categoryLimits\": [\n    {\n      \"categoryCode\": \"DINING_OUT\",\n      \"limitAmount\": 8000.0,\n      \"alertThresholdPct\": 80\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "R3 — Consent and data rights",
+      "description": "Behind moipay.budget-insights.consent.enabled. Consent governs reading bank messages and nothing else: every other route works without it.",
+      "item": [
+        {
+          "name": "Grant consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/consent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "consent"
+              ]
+            },
+            "description": "consentVersion must equal the version currently in force, or the grant is refused with INSIGHTS_CONSENT_VERSION_MISMATCH. Consent to superseded text is not consent.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"consentVersion\": \"1.0\",\n  \"policyHash\": \"sha256-of-the-policy-text\",\n  \"channel\": \"ANDROID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Read consent",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/consent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "consent"
+              ]
+            },
+            "description": "The latest consent row. consentGiven=false for a customer who never granted or has withdrawn."
+          }
+        },
+        {
+          "name": "Withdraw consent",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/consent?channel=ANDROID",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "consent"
+              ],
+              "query": [
+                {
+                  "key": "channel",
+                  "value": "ANDROID",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Writes a new row rather than updating. Takes effect on the next ingest call with no deploy."
+          }
+        },
+        {
+          "name": "Request a data export",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/data/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "data",
+                "export"
+              ]
+            },
+            "description": "Returns 202 with an exportId and the path to fetch it. The export expires — expiresAt says when — and erasure takes it with everything else."
+          }
+        },
+        {
+          "name": "Download a data export",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/data/export/{{exportId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "data",
+                "export",
+                "{{exportId}}"
+              ]
+            },
+            "description": "The document itself, as raw JSON outside the usual envelope. 404 if it is not yours, 410 once it has expired."
+          }
+        },
+        {
+          "name": "Erase all data",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "data"
+              ]
+            },
+            "description": "Irreversible. Clears every table this service holds for the customer and reports the per-table counts. bi_compliance_event is not cleared — it has no user_id, so it holds no row that is yours."
+          }
+        }
+      ]
+    },
+    {
+      "name": "R4 — SMS ingest and reference sync",
+      "description": "Behind moipay.budget-insights.ingest.enabled, and behind consent. Carries Compliance gate 2.",
+      "item": [
+        {
+          "name": "Ingest a batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/messages/ingest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "messages",
+                "ingest"
+              ]
+            },
+            "description": "Parsed fields only — the contract has no free-text field, so there is no way for message content to arrive. OtpGuard re-checks every field server-side and rejects the batch with 422 on a hit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"templateVersion\": 1,\n  \"platform\": \"ANDROID\",\n  \"messages\": [\n    {\n      \"idempotencyKey\": \"{{$guid}}\",\n      \"bankCode\": \"COMBANK\",\n      \"messageType\": \"DEBIT\",\n      \"parsedAt\": \"2026-09-14T10:15:30+05:30\",\n      \"amount\": 1250.0,\n      \"currency\": \"LKR\",\n      \"direction\": \"DEBIT\",\n      \"merchant\": \"Coffee Shop\",\n      \"txnDate\": \"2026-09-14\",\n      \"instrumentType\": \"CARD\",\n      \"maskedTail\": \"4242\",\n      \"parseConfidence\": 0.95\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reference sync",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/reference/sync?deviceId={{deviceId}}&templateVersion=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "reference",
+                "sync"
+              ],
+              "query": [
+                {
+                  "key": "deviceId",
+                  "value": "{{deviceId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "templateVersion",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "vocabularyVersion",
+                  "value": "0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "The sender allowlist and parser templates a handset needs. Consent-gated: 403 INSIGHTS_CONSENT_REQUIRED without it.\n\nSMS format discovery: an app that sends vocabularyVersion (its cached vocabulary version, 0 if none) also receives `vocabulary` {version, words[{id, word}]} when the server's is newer and Phase 2 is on. Apps that do not send it get exactly today's response."
+          }
+        }
+      ]
+    },
+    {
+      "name": "R5 — Payment activity",
+      "description": "Behind moipay.budget-insights.activity.enabled.",
+      "item": [
+        {
+          "name": "Payment activity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/activity?weekStart=2026-09-14&accountId={{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "weekStart",
+                  "value": "2026-09-14",
+                  "disabled": true
+                },
+                {
+                  "key": "accountId",
+                  "value": "{{accountId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Seven days, two series (card and bank), always both — a series emptied by the account filter is still returned so the chart does not change shape."
+          }
+        }
+      ]
+    },
+    {
+      "name": "R6 — Alerts and recommendations",
+      "description": "Behind moipay.budget-insights.alerts.enabled and .recommendations.enabled, which roll back independently.",
+      "item": [
+        {
+          "name": "Alerts for a period",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/alerts?on=2026-09-14",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "alerts"
+              ],
+              "query": [
+                {
+                  "key": "on",
+                  "value": "2026-09-14",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Threshold crossings raised for the period containing the date, newest first. In-app only — nothing here sends SMS, push or email."
+          }
+        },
+        {
+          "name": "Acknowledge an alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/alerts/{{alertId}}/acknowledge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "alerts",
+                "{{alertId}}",
+                "acknowledge"
+              ]
+            },
+            "description": "Sets a timestamp that is never unset. Acknowledging twice does not move it."
+          }
+        },
+        {
+          "name": "Recommendations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/recommendations?on=2026-09-14",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "recommendations"
+              ],
+              "query": [
+                {
+                  "key": "on",
+                  "value": "2026-09-14",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "50/30/20 against the customer's monthly target, never their income — this service never sees income. Per-category caps come from the trailing three COMPLETE months, so the current partial month is deliberately invisible here."
+          }
+        }
+      ]
+    },
+    {
+      "name": "BI-36 — Device-side compliance reporting",
+      "item": [
+        {
+          "name": "Report discarded OTP/PIN detections",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/compliance/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "compliance",
+                "events"
+              ]
+            },
+            "description": "Reports that the handset's own filter detected an OTP or PIN and destroyed the message. There is no field here capable of carrying the message, the code or the sender — only that a detection happened, of which kind, and when. The server fixes source=SMS_PARSER and action=DISCARDED; a client cannot assert either, nor any of the other seven event types. clientRef is hashed before storage and makes a retry the same incident rather than a second one.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"platform\": \"ANDROID\",\n  \"events\": [\n    {\n      \"eventType\": \"OTP_DETECTED\",\n      \"detectedAt\": \"2026-09-23T10:15:30+05:30\",\n      \"clientRef\": \"{{$guid}}\"\n    },\n    {\n      \"eventType\": \"PIN_DETECTED\",\n      \"detectedAt\": \"2026-09-23T10:22:04+05:30\",\n      \"clientRef\": \"{{$guid}}\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SMS format discovery (Phases 1-3)",
+      "description": "Learning bank SMS formats that no template reads, without receiving any message. The phone keeps an unreadable SMS encrypted for up to 60 days and sends only counts (Phase 1) and the message's shape (Phase 2). A format reaches the admin only once 5 or more customers have sent it; a template made from it is synced to every phone, which then re-reads its waiting messages through ordinary ingest.",
+      "item": [
+        {
+          "name": "F1 Report unmatched SMS counts (Phase 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/formats/unmatched-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "formats",
+                "unmatched-stats"
+              ]
+            },
+            "description": "Daily counts of money SMS from a bank sender that no template could read, per day. Counts only: there is no field for a message. Each item is a finished day's total and replaces any earlier value from this device for that day and sender. Days older than 7 days, counts outside 1..500 and senders that look like phone numbers are rejected per item. 501 while format-discovery.enabled is off or the device-hash salt is missing; 403 without current consent.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"platform\": \"ANDROID\",\n  \"stats\": [\n    {\n      \"senderId\": \"NTB\",\n      \"day\": \"2026-10-07\",\n      \"count\": 3\n    },\n    {\n      \"senderId\": \"SAMPATH\",\n      \"day\": \"2026-10-07\",\n      \"count\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('recorded is a number', () => pm.expect(pm.response.json().data.recorded).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "F2 Report SMS format skeletons (Phase 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "X-Tenant",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/formats/samples",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "formats",
+                "samples"
+              ]
+            },
+            "description": "The shape of an SMS no template could read: vocabulary word ids with their case (4c = Payment), W for unknown words, typed placeholders with their format (AMT:c2, ACCT:NNNNXXXXNNNN, DATE:dd/MM/yy, TIME:hh:mm a, N:6), punctuation, NL; a leading ~ means no space before. Never text, digits or names (SkeletonGrammar). One result per sample: ACCEPTED, DUPLICATE (this user already counted for that format) or REJECTED with MOI.BI.FMT.E.003/004. 501 while format-discovery.samples-enabled is off or the user-hash key is missing; 403 without current consent; 429 above the daily limit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"platform\": \"ANDROID\",\n  \"vocabularyVersion\": 1,\n  \"samples\": [\n    {\n      \"clientRef\": \"{{$guid}}\",\n      \"senderId\": \"NTB\",\n      \"tokens\": [\n        \"10c\",\n        \"96c\",\n        \"~,\",\n        \"70l\",\n        \"146c\",\n        \"21l\",\n        \"14l\",\n        \"228u\",\n        \"171u\",\n        \"ACCT:NNNNXXXXXNNN\",\n        \"38l\",\n        \"W\",\n        \"138c\",\n        \"13l\",\n        \"210u\",\n        \"AMT:p2\",\n        \"27l\",\n        \"DATE:dd Mmmm yyyy\",\n        \"TIME:hh:mm a\"\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('one result per sample', () => pm.expect(pm.response.json().data.results).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "F3 SMS coverage by sender (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/sender-coverage?days=30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "sender-coverage"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Phase 1 report: per sender, money SMS no template could read over the last `days` days (1..90, default 30), the number of devices, the last day seen, whether the sender is on the allowlist and how many live templates its bank has. Counts only."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('data is a list', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "F4 SMS format candidates (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/format-candidates?status=OPEN&senderId=NTB&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "format-candidates"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "OPEN",
+                  "disabled": true
+                },
+                {
+                  "key": "senderId",
+                  "value": "NTB",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Phase 2: formats sent by at least 5 different customers (the floor cannot be configured lower; it is applied in the query). status OPEN (default) / RESOLVED / REJECTED, optional senderId, page, size (max 100). coveredByTemplateId names a live template that already reads an open format."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "F5 One SMS format candidate (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/format-candidates/{{formatCandidateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "format-candidates",
+                "{{formatCandidateId}}"
+              ]
+            },
+            "description": "One format. 404 for an unknown id and for a format below the 5-customer floor alike."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "F6 Start a template from a format (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/format-candidates/{{formatCandidateId}}/draft-template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "format-candidates",
+                "{{formatCandidateId}}",
+                "draft-template"
+              ]
+            },
+            "description": "Phase 3: builds a sample SMS from the format with invented values (Sample Text, 1,234.56, 05/03/26 ...) and returns it with the template wizard's own analysis, exactly as if it had been pasted. The dashboard opens the existing wizard with both; generate, save and publish as usual. bankCode must be a bank in the bank list (add the bank first for a new bank). Nothing is saved here. Rate-limited with the builder.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"7083\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "F7 Reject a format (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/format-candidates/{{formatCandidateId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "format-candidates",
+                "{{formatCandidateId}}",
+                "reject"
+              ]
+            },
+            "description": "Marks an open format as not one to template. reason: NOT_TRANSACTION, PROMOTION, DUPLICATE or OTHER. Recorded with the admin and the time.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"PROMOTION\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "F8 SMS vocabulary (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/sms-vocabulary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "sms-vocabulary"
+              ]
+            },
+            "description": "The words a phone may name in a skeleton, by permanent id, with source and whether still active. Ids are never reused."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Budget Insights admin (Super Admin only)",
+      "description": "The admin dashboard's API: Overview and Configuration. Every route needs X-User-Roles to contain SUPER_ADMIN (403 MOI.BI.ADM.E.001 otherwise). The admin API is always on wherever Budget Insights is enabled (no admin.enabled switch). moipay.budget-insights.admin.config-write-enabled=false answers 403 MOI.BI.ADM.E.004 on every write while reads keep working. Configuration writes are drafts: nothing reaches handsets or the categoriser until POST /config/publish.",
+      "item": [
+        {
+          "name": "Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/overview?from=2026-08-31&to=2026-09-29&tenantId={{tenantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-08-31",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2026-09-29",
+                  "disabled": true
+                },
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Screen 01. KPIs, transactions per day by source, category and bank distribution, reference versions on handsets. Counts only. from/to default to the last 30 days (max 366, not in the future: 400 MOI.BI.ADM.E.005). tenantId is optional; without it every tenant is counted. A panel whose query failed is null and named in panelErrors."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Configuration summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "summary"
+              ]
+            },
+            "description": "Tab counters, the current reference release and the pending-changes bar (pendingChanges, changesetRevision). Counts are of items that exist after publish."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Banks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/banks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "banks"
+              ]
+            },
+            "description": "Banks the admin can configure (moipay.budget-insights.admin.banks)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Icon keys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/icon-keys",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "icon-keys"
+              ]
+            },
+            "description": "Icon keys the mobile app ships; a category must use one of them."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/categories?q=dining&active=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "dining",
+                  "disabled": true
+                },
+                {
+                  "key": "active",
+                  "value": "all",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Screen 02. Effective view: published values with any pending change applied. state is PUBLISHED or DRAFT_*; OTHER is locked. usage = transactions30d, transactionsTotal, merchantRules, budgetLimits."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.items && d.items.length) pm.collectionVariables.set('categoryId', d.items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add category (draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GROCERIES\",\n  \"nameEn\": \"Groceries\",\n  \"nameSi\": null,\n  \"nameTa\": null,\n  \"iconKey\": \"ic_shopping\",\n  \"colourHex\": \"#199E70\",\n  \"sortOrder\": 18,\n  \"active\": true\n}"
+            },
+            "description": "Screen 03. 201 with the DRAFT_NEW item and the new changesetRevision. 409 MOI.BI.ADM.E.008 when the code is taken (drafts included)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.item) pm.collectionVariables.set('categoryId', d.item.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit category (draft)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"DINING_OUT\",\n  \"nameEn\": \"Dining Out\",\n  \"nameSi\": \"ආපන ශාලා\",\n  \"nameTa\": null,\n  \"iconKey\": \"ic_dining_out\",\n  \"colourHex\": null,\n  \"sortOrder\": 5,\n  \"active\": true\n}"
+            },
+            "description": "Screen 03. A published code never changes (403 MOI.BI.ADM.E.015); OTHER is locked. Editing back to the published values drops the draft."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Category usage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/categories/{{categoryId}}/usage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "categories",
+                "{{categoryId}}",
+                "usage"
+              ]
+            },
+            "description": "Screen 04. What references the category, and whether it can be deleted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate category (draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/categories/{{categoryId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "categories",
+                "{{categoryId}}",
+                "deactivate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"moveMerchantRulesTo\": null\n}"
+            },
+            "description": "Screen 04. Its merchant rules move to moveMerchantRulesTo, or are turned off when it is null."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Activate category (draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/categories/{{categoryId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "categories",
+                "{{categoryId}}",
+                "activate"
+              ]
+            },
+            "description": "Reactivates a deactivated category."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete category (draft)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Screen 04. Only an unused category: otherwise 409 MOI.BI.ADM.E.009 with the usage in details. A never-published draft is simply dropped (item null)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Senders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/senders?bank=7083&q=&active=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "senders"
+              ],
+              "query": [
+                {
+                  "key": "bank",
+                  "value": "7083",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "active",
+                  "value": "all",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Screen 11. usage = activeTemplates (templates whose fieldMap.senders list the sender) and transactions30d."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.items && d.items.length) pm.collectionVariables.set('senderId', d.items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add sender (draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/senders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "senders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"7278\",\n  \"senderId\": \"SAMPATH\",\n  \"countryCode\": \"LK\",\n  \"active\": true\n}"
+            },
+            "description": "Screen 12. Bank must be in the bank list; bank + sender id unique (409 MOI.BI.ADM.E.008)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.item) pm.collectionVariables.set('senderId', d.item.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit sender (draft)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/senders/{{senderId}}?acknowledgeTemplateImpact=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "senders",
+                "{{senderId}}"
+              ],
+              "query": [
+                {
+                  "key": "acknowledgeTemplateImpact",
+                  "value": "false",
+                  "description": "true when the edit turns off, renames or moves a sender that active templates read from (else 409 MOI.BI.ADM.E.016)"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"7083\",\n  \"senderId\": \"HNB\",\n  \"countryCode\": \"LK\",\n  \"active\": true\n}"
+            },
+            "description": "Screen 12."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate sender (draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/senders/{{senderId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "senders",
+                "{{senderId}}",
+                "deactivate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acknowledgeTemplateImpact\": true\n}"
+            },
+            "description": "Screen 13. Without acknowledgeTemplateImpact, 409 MOI.BI.ADM.E.016 lists the active templates that read this sender."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete sender (draft)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/senders/{{senderId}}?acknowledgeTemplateImpact=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "senders",
+                "{{senderId}}"
+              ],
+              "query": [
+                {
+                  "key": "acknowledgeTemplateImpact",
+                  "value": "true",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Screen 13. Same acknowledgement as deactivate. Senders are hard-deleted on publish (nothing references them by key)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pending changes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/changeset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "changeset"
+              ]
+            },
+            "description": "Screen 23. Every pending change with a plain-words label and summary, plus revision and baseReleaseVersion to send with the publish."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.changes && d.changes.length) pm.collectionVariables.set('changeId', d.changes[0].changeId);",
+                  "if (d) pm.collectionVariables.set('baseReleaseVersion', d.baseReleaseVersion);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Discard one change",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/changeset/changes/{{changeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "changeset",
+                "changes",
+                "{{changeId}}"
+              ]
+            },
+            "description": "Screen 23. Returns the new changesetRevision."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Discard all changes",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/changeset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "changeset"
+              ]
+            },
+            "description": "Pending bar: Discard all."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validate changeset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/changeset/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "changeset",
+                "validate"
+              ]
+            },
+            "description": "Screen 23. The pre-publish checks over the whole effective configuration: errors block publishing, warnings need acknowledgeWarnings, checks is the checklist."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publish",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "publish"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Sinhala names for Dining Out; Sampath sender\",\n  \"changesetRevision\": {{changesetRevision}},\n  \"baseReleaseVersion\": {{baseReleaseVersion}},\n  \"acknowledgeWarnings\": true\n}"
+            },
+            "description": "Screen 23. Applies every pending change in one transaction as release N+1; handsets download it on their next sync. 409 MOI.BI.ADM.E.010 when the revision or release moved since review, E.012 when warnings are not acknowledged, E.017 when there is nothing to publish; 422 E.011 with the blocking problems in details."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d) pm.collectionVariables.set('releaseVersion', d.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Releases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/releases?page=0&size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "releases"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "50",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Screen 24. Every published release, newest first: who, when, why, counts."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.items && d.items.length) pm.collectionVariables.set('releaseVersion', d.items[0].version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Release detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/releases/{{releaseVersion}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "releases",
+                "{{releaseVersion}}"
+              ]
+            },
+            "description": "Screen 24. One release with the before and after of every change."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore a release (drafts)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/releases/{{releaseVersion}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "releases",
+                "{{releaseVersion}}",
+                "restore"
+              ]
+            },
+            "description": "Screen 24. Creates the drafts that bring the configuration back to that release. Needs an empty changeset; nothing goes live until the drafts are published, so versions never go backwards."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M1 Merchant rules (list)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/merchant-rules?q=&matchType=REGEX&categoryId={{categoryId}}&active=all&page=0&size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "merchant-rules"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "matchType",
+                  "value": "REGEX",
+                  "disabled": true
+                },
+                {
+                  "key": "categoryId",
+                  "value": "{{categoryId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "active",
+                  "value": "all",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "50",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Merchant rules in the order the categoriser tries them. Names and match type only; never the stored pattern."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.items && d.items.length) pm.collectionVariables.set('ruleId', d.items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M7 Uncategorised merchants (Other, last 30 days)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/merchant-rules/uncategorised?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "merchant-rules",
+                "uncategorised"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Categorisation layer 5: merchants the engine left in Other over the last 30 days of debits, most frequent first, as [{merchant, transactions30d, nowCategory}]. Cleaned merchant names, counts only, merchants seen for at least k (>= 5) customers. Excludes cash and fee message types (layer 0) and merchants in Other on purpose. nowCategory is what the current rules (including drafts) would give it; existing transactions are not re-categorised."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('data is a list', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M2 Merchant rule (detail)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/merchant-rules/{{ruleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "merchant-rules",
+                "{{ruleId}}"
+              ]
+            },
+            "description": "One rule plus `generated` (stored type, pattern, priority number and band) for the Advanced settings panel."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M3 Test a merchant rule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/merchant-rules/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "merchant-rules",
+                "test"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rule\": {\n    \"matchType\": \"REGEX\",\n    \"names\": [\n      \"CARGILLS FOOD CITY\"\n    ],\n    \"categoryId\": \"{{categoryId}}\",\n    \"priorityLevel\": \"NORMAL\",\n    \"ruleId\": null\n  },\n  \"description\": \"CARGILLS FOOD CITY KIRULAPONE\"\n}"
+            },
+            "description": "Nothing is saved; the description is not stored, logged or echoed. Returns the category, the rule that decided it, a priority suggestion when another rule wins, and 30-day impact (debit only, merchants seen for >= 5 customers). 30 calls / min."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M4 Add a merchant rule (draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/merchant-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "merchant-rules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"SIMPLE\",\n  \"matchType\": \"REGEX\",\n  \"names\": [\n    \"CARGILLS FOOD CITY\"\n  ],\n  \"categoryId\": \"{{categoryId}}\",\n  \"priorityLevel\": \"HIGH\",\n  \"active\": true\n}"
+            },
+            "description": "SIMPLE: the server generates pattern, stored type and priority number. ADVANCED: {mode, matchType, pattern, categoryId, priority 1-999, active}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.item) pm.collectionVariables.set('ruleId', d.item.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M5 Edit a merchant rule (draft)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/merchant-rules/{{ruleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "merchant-rules",
+                "{{ruleId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"SIMPLE\",\n  \"matchType\": \"PREFIX\",\n  \"names\": [\n    \"CARGILLS\",\n    \"KEELLS\"\n  ],\n  \"categoryId\": \"{{categoryId}}\",\n  \"priorityLevel\": \"HIGH\",\n  \"active\": true\n}"
+            },
+            "description": "Same body as M4. active:false turns the rule off (screen 10)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M6 Delete a merchant rule (draft)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/merchant-rules/{{ruleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "merchant-rules",
+                "{{ruleId}}"
+              ]
+            },
+            "description": "DRAFT_DELETED; a never-published rule is simply dropped."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "T1 Templates (list)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/templates?q=&active=all&bank=7083",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "templates"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "active",
+                  "value": "all",
+                  "disabled": true
+                },
+                {
+                  "key": "bank",
+                  "value": "7083",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "One row per bank + message type (active, else latest retired), with version, next version, editor mode and usage. No pattern."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.items && d.items.length) pm.collectionVariables.set('templateId', d.items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "T2 Template (detail)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/templates/{{templateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "templates",
+                "{{templateId}}"
+              ]
+            },
+            "description": "Pattern, field map, builder spec (no sample text) and version history (Advanced mode, screen 21)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "T3 Wizard: analyse a sample",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/templates/builder/analyse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "templates",
+                "builder",
+                "analyse"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"7083\",\n  \"sample\": \"LKR 2,450.00 debited to Ac No:12XXXXXX34 on 27/09/26 14:02:19 Reason:KEELLS SUPERMARKET NUGEGODA Bal:\"\n}"
+            },
+            "description": "Redacted sample only. Returns token and suggestion offsets and privacy warnings; the sample is never stored, logged or returned. OTP/PIN samples: 422 MOI.BI.ADM.E.018. 120 calls / min."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "T4 Wizard: generate from highlights",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/templates/builder/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "templates",
+                "builder",
+                "generate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"7083\",\n  \"messageType\": \"ACCOUNT_TXN\",\n  \"logicalType\": \"ACCOUNT_TRANSACTION\",\n  \"instrumentType\": \"BANK\",\n  \"senders\": [\n    \"HNB\"\n  ],\n  \"sample\": \"LKR 2,450.00 debited to Ac No:12XXXXXX34 on 27/09/26 14:02:19 Reason:KEELLS SUPERMARKET NUGEGODA Bal:\",\n  \"extraSamples\": [],\n  \"annotations\": [\n    {\n      \"start\": 4,\n      \"end\": 12,\n      \"field\": \"AMOUNT\"\n    },\n    {\n      \"start\": 13,\n      \"end\": 20,\n      \"field\": \"DIRECTION\",\n      \"direction\": \"DEBIT\",\n      \"counterpartWords\": [\n        \"credited\"\n      ]\n    },\n    {\n      \"start\": 30,\n      \"end\": 40,\n      \"field\": \"IGNORE\",\n      \"ignoreKind\": \"MASKED_ACCOUNT\"\n    },\n    {\n      \"start\": 44,\n      \"end\": 52,\n      \"field\": \"DATE\",\n      \"format\": \"dd/MM/yy\"\n    },\n    {\n      \"start\": 53,\n      \"end\": 61,\n      \"field\": \"TIME\",\n      \"format\": \"HH:mm:ss\"\n    },\n    {\n      \"start\": 69,\n      \"end\": 96,\n      \"field\": \"MERCHANT\"\n    }\n  ],\n  \"fixed\": {\n    \"currency\": \"LKR\",\n    \"direction\": null,\n    \"txnDateSource\": null\n  },\n  \"options\": {\n    \"flexibleSpacing\": false,\n    \"trailing\": \"MAY_CONTINUE\",\n    \"generaliseNumbers\": true\n  },\n  \"templateId\": \"{{templateId}}\",\n  \"redactionConfirmed\": true\n}"
+            },
+            "description": "Returns builderSpec (save only this), templateView, pattern, fieldMap, extracted values with offsets, and checks. Saves nothing. 422 E.018 / E.020."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "T5 Advanced mode: validate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/templates/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "templates",
+                "validate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"7083\",\n  \"messageType\": \"ACCOUNT_TXN\",\n  \"pattern\": \"^LKR (?<amount>[0-9][0-9,]*(?:\\\\.[0-9]{1,2})?|\\\\.[0-9]{1,2}) (?<dir>debit ?ed|credit ?ed) to Ac No:[0-9]+X+[0-9]+ on (?<date>[0-9]{2}/[0-9]{2}/[0-9]{2}) (?<time>[0-9]{2}:[0-9]{2}:[0-9]{2}) Reason:(?<merchant>.+?) Bal:\",\n  \"fieldMap\": {\n    \"fieldMapVersion\": 1,\n    \"senders\": [\n      \"HNB\"\n    ],\n    \"logicalType\": \"ACCOUNT_TRANSACTION\",\n    \"instrumentType\": \"BANK\",\n    \"amount\": {\n      \"group\": \"amount\"\n    },\n    \"currency\": {\n      \"value\": \"LKR\"\n    },\n    \"direction\": {\n      \"group\": \"dir\",\n      \"map\": {\n        \"debited\": \"DEBIT\",\n        \"credited\": \"CREDIT\"\n      }\n    },\n    \"merchant\": {\n      \"group\": \"merchant\"\n    },\n    \"txnDate\": {\n      \"group\": \"date\",\n      \"format\": \"dd/MM/yy\"\n    },\n    \"txnTime\": {\n      \"group\": \"time\",\n      \"format\": \"HH:mm:ss\"\n    },\n    \"maskedTail\": {\n      \"policy\": \"ABSENT\"\n    }\n  },\n  \"samples\": [],\n  \"templateId\": \"{{templateId}}\"\n}"
+            },
+            "description": "Portable-pattern and field-map checks (422 E.013 / E.014), then samples matched and regression. 120 calls / min."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "T6 Add a template (draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "templates"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"BUILDER\",\n  \"bankCode\": \"7278\",\n  \"messageType\": \"CARD_PURCHASE\",\n  \"builderSpec\": {\n    \"specVersion\": 1,\n    \"segments\": [\n      {\n        \"literal\": \"LKR \"\n      },\n      {\n        \"field\": \"AMOUNT\"\n      },\n      {\n        \"literal\": \" spent at \"\n      },\n      {\n        \"field\": \"MERCHANT\"\n      },\n      {\n        \"literal\": \" on \"\n      },\n      {\n        \"field\": \"DATE\",\n        \"format\": \"dd/MM/yyyy\"\n      }\n    ],\n    \"fixed\": {\n      \"currency\": \"LKR\",\n      \"direction\": \"DEBIT\",\n      \"txnDateSource\": null\n    },\n    \"options\": {\n      \"flexibleSpacing\": false,\n      \"trailing\": \"MAY_CONTINUE\",\n      \"generaliseNumbers\": true\n    },\n    \"logicalType\": \"CARD_PURCHASE\",\n    \"instrumentType\": \"CARD\",\n    \"senders\": [\n      \"SAMPATH\"\n    ]\n  },\n  \"active\": true\n}"
+            },
+            "description": "BUILDER: only the builder spec is sent; the server regenerates pattern and field map. ADVANCED: {mode, bankCode, messageType, pattern, fieldMap, active}. 409 E.008, 422 E.013 / E.014 / E.019 / E.020."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);",
+                  "if (d && d.item) pm.collectionVariables.set('templateId', d.item.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "T7 Edit a template (draft, next version)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/templates/{{templateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "templates",
+                "{{templateId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"ADVANCED\",\n  \"bankCode\": \"7083\",\n  \"messageType\": \"ACCOUNT_TXN\",\n  \"pattern\": \"^LKR (?<amount>[0-9][0-9,]*(?:\\\\.[0-9]{1,2})?|\\\\.[0-9]{1,2}) (?<dir>debit ?ed|credit ?ed) to Ac No:[0-9]+X+[0-9]+ on (?<date>[0-9]{2}/[0-9]{2}/[0-9]{2}) (?<time>[0-9]{2}:[0-9]{2}:[0-9]{2}) Reason:(?<merchant>.+?) Bal:\",\n  \"fieldMap\": {\n    \"fieldMapVersion\": 1,\n    \"senders\": [\n      \"HNB\"\n    ],\n    \"logicalType\": \"ACCOUNT_TRANSACTION\",\n    \"instrumentType\": \"BANK\",\n    \"amount\": {\n      \"group\": \"amount\"\n    },\n    \"currency\": {\n      \"value\": \"LKR\"\n    },\n    \"direction\": {\n      \"group\": \"dir\",\n      \"map\": {\n        \"debited\": \"DEBIT\",\n        \"credited\": \"CREDIT\"\n      }\n    },\n    \"merchant\": {\n      \"group\": \"merchant\"\n    },\n    \"txnDate\": {\n      \"group\": \"date\",\n      \"format\": \"dd/MM/yy\"\n    },\n    \"txnTime\": {\n      \"group\": \"time\",\n      \"format\": \"HH:mm:ss\"\n    },\n    \"maskedTail\": {\n      \"policy\": \"ABSENT\"\n    }\n  },\n  \"active\": true\n}"
+            },
+            "description": "Bank and message type cannot change. Publishing inserts version N+1 and retires N."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "T8 Retire a template (draft)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/templates/{{templateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "templates",
+                "{{templateId}}"
+              ]
+            },
+            "description": "DRAFT_RETIRED. Templates are never deleted: transactions keep pointing at the version that parsed them."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const d = body && body.data;",
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "if (d && d.changesetRevision !== undefined) pm.collectionVariables.set('changesetRevision', d.changesetRevision);",
+                  "if (d && d.revision !== undefined) pm.collectionVariables.set('changesetRevision', d.revision);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A3b — Banks (management list, incl. inactive)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/banks?active=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "banks"
+              ],
+              "query": [
+                {
+                  "key": "active",
+                  "value": "all",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Active banks by default (dropdowns); ?active=all for the management list. Each item carries usage{senders, activeSenders, templates, activeTemplates, customerAccounts, deletable, deactivatable}."
+          }
+        },
+        {
+          "name": "B1 — Add bank",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/banks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "banks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"7135\",\n  \"bankName\": \"People's Bank\"\n}"
+            },
+            "description": "Immediately available in every bank dropdown. bankCode = 4-digit CBSL code (as in core's bank list), fixed after creation. 409 E.008 duplicate code/name."
+          }
+        },
+        {
+          "name": "B2 — Rename / turn bank on or off",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/banks/{{bankCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "banks",
+                "{{bankCode}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankName\": \"People's Bank Sri Lanka\",\n  \"active\": true\n}"
+            },
+            "description": "Saved as a DRAFT for a live bank (state DRAFT_EDITED / DRAFT_DEACTIVATED; live values in `published`) and applied with the next publish; kept in release history and restorable. A bank still pending with its first sender draft changes directly. 409 E.023 when turning off a bank that active senders/templates use. If-Match optional; the response carries changesetRevision."
+          }
+        },
+        {
+          "name": "B3 — Delete unused bank",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/banks/{{bankCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "banks",
+                "{{bankCode}}"
+              ]
+            },
+            "description": "Saved as a DRAFT for a live bank (state DRAFT_DELETED until publish). Only for banks nothing ever used (409 E.023 otherwise). If-Match optional; data.changesetRevision returned."
+          }
+        },
+        {
+          "name": "S2b — Add sender + new bank",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Optional. The changesetRevision the dashboard last saw; a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/senders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "senders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newBank\": {\n    \"bankCode\": \"7135\",\n    \"bankName\": \"People's Bank\"\n  },\n  \"senderId\": \"PEOPLESBANK\",\n  \"countryCode\": \"LK\",\n  \"active\": true\n}"
+            },
+            "description": "Send newBank {bankCode (4-digit CBSL), bankName} instead of bankCode to add the bank together with the sender draft. The bank is pending until publish and removed if the draft is discarded. 409 E.008 if the code or name exists (pick it via bankCode instead)."
+          }
+        },
+        {
+          "name": "BP1 — Budget policy (live, draft, last published)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/budget-policy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "budget-policy"
+              ]
+            },
+            "description": "Configuration › Budget Policy. 50/30/20 split, recommendation period, default category alert threshold, pace tolerance, and which budget alert types are raised. published = live, effective = after the next publish."
+          }
+        },
+        {
+          "name": "BP2 — Save budget policy as a draft",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Optional. The changesetRevision the dashboard last saw; a mismatch answers 409 MOI.BI.ADM.E.010."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/budget-policy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "budget-policy"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"needsPct\": 50,\n  \"wantsPct\": 30,\n  \"savingsPct\": 20,\n  \"trailingMonths\": 3,\n  \"defaultAlertPct\": 75,\n  \"paceTolerancePct\": 5,\n  \"alertCategoryApproaching\": true,\n  \"alertCategoryExceeded\": true,\n  \"alertBudgetExceeded\": true\n}"
+            },
+            "description": "Whole policy, every field required. needs+wants+savings = 100; trailingMonths 1-12; defaultAlertPct 50-95; paceTolerancePct 0-25. If-Match required. Live after publish."
+          }
+        },
+        {
+          "name": "BP3 — Discard budget policy draft",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{changesetRevision}}",
+                "description": "Optional. The changesetRevision the dashboard last saw; a mismatch answers 409 MOI.BI.ADM.E.010."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/budget-policy/draft",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "budget-policy",
+                "draft"
+              ]
+            },
+            "description": "Drops the pending budget policy change. If-Match required."
+          }
+        },
+        {
+          "name": "M1 — Message types (wizard list, active only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/message-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "message-types"
+              ]
+            },
+            "description": "Message types SMS templates pick from. ?active=all for the management list (with usage counts), ?active=false for turned-off types."
+          }
+        },
+        {
+          "name": "M2 — Add message type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/message-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "message-types"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"LANKAQR_PAYMENT\",\n  \"displayName\": \"LankaQR payment\",\n  \"logicalType\": \"PAYMENT\",\n  \"defaultDirection\": \"DEBIT\",\n  \"defaultInstrument\": \"BANK\",\n  \"fixedCategoryCode\": null,\n  \"active\": true\n}"
+            },
+            "description": "Applies immediately. code is UPPER_SNAKE and never changes; 409 MOI.BI.ADM.E.008 when it exists. logicalType: ACCOUNT_TRANSACTION, CARD_PURCHASE, ATM_WITHDRAWAL, CASH_DEPOSIT, TRANSFER, PAYMENT, CHEQUE, LOAN, BANK_CHARGE_OR_REFUND, REFUND_OR_REVERSAL."
+          }
+        },
+        {
+          "name": "M3 — Change message type / turn on or off",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Gateway-Token",
+                "value": "{{gatewayToken}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{adminUserId}}"
+              },
+              {
+                "key": "X-User-Roles",
+                "value": "SUPER_ADMIN"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/message-types/{{messageTypeCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "admin",
+                "config",
+                "message-types",
+                "{{messageTypeCode}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"LankaQR payment\",\n  \"logicalType\": \"PAYMENT\",\n  \"defaultDirection\": \"DEBIT\",\n  \"defaultInstrument\": \"BANK\",\n  \"fixedCategoryCode\": null,\n  \"active\": false\n}"
+            },
+            "description": "Replaces every field except code. fixedCategoryCode null = merchant rules decide. Turning a type off only stops new templates from picking it."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "adminUserId",
+      "value": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "key": "changesetRevision",
+      "value": "0"
+    },
+    {
+      "key": "categoryId",
+      "value": "b1c00000-0000-4000-a000-000000000005"
+    },
+    {
+      "key": "senderId",
+      "value": "b1e50000-0000-4000-a000-000000000003"
+    },
+    {
+      "key": "changeId",
+      "value": "00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "key": "releaseVersion",
+      "value": "2"
+    },
+    {
+      "key": "baseReleaseVersion",
+      "value": "1"
+    },
+    {
+      "key": "ruleId",
+      "value": ""
+    },
+    {
+      "key": "templateId",
+      "value": ""
+    },
+    {
+      "key": "bankCode",
+      "value": "7135"
+    },
+    {
+      "key": "messageTypeCode",
+      "value": "LANKAQR_PAYMENT"
+    }
+  ]
+}

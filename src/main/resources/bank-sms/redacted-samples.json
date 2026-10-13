@@ -1,0 +1,657 @@
+{
+  "_comment": [
+    "Redacted real bank SMS used to check the V1.3.0 seed templates (BankSmsTemplateSeedTest).",
+    "Source: leadsgen-tech/salli, Apache-2.0, samples/redacted/*.txt and parser fixtures. Names, phone numbers and",
+    "references are already replaced by the source ([NAME], [PHONE], [REF]).",
+    "Account numbers and transaction/reference numbers are further replaced here with synthetic digits of the same length.",
+    "One marketing message in mustNotMatch was written for this test, and is labelled so.",
+    "These are third-party samples: evidence status COMMUNITY_SOURCE_NEEDS_VALIDATION, not MoiPay-sourced.",
+    "expected.maskedTail null means the device must send no tail. txnDate is omitted where the SMS has no date",
+    "(the template falls back to the SMS received date)."
+  ],
+  "samples": [
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "Online Transfer Debit Rs 1,234.56 From A/C No XXXXXXXXXX999. Balance available Rs 9,876.54 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "1234.56",
+        "direction": "DEBIT",
+        "merchant": "Online Transfer",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "CEFT Transfer Credit Rs 3,250.00 To A/C No XXXXXXXXXX999. Balance available Rs 17,626.29 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "3250.00",
+        "direction": "CREDIT",
+        "merchant": "CEFT Transfer",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "ATM Withdrawal Rs 4,000.00 From A/C No XXXXXXXXXX999. Balance available Rs 16,126.29 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "4000.00",
+        "direction": "DEBIT",
+        "merchant": "ATM",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "ATM Cash Deposit Rs 10,000.00 To A/C No XXXXXXXXXX999. Balance available Rs 26,126.29 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "10000.00",
+        "direction": "CREDIT",
+        "merchant": "ATM Cash",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "Cheque Deposit Rs 25,000.00 To A/C No XXXXXXXXXX999. Balance available Rs 51,126.29 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "25000.00",
+        "direction": "CREDIT",
+        "merchant": "Cheque",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "CEFT Transfer Debit Rs 37550.00 From A/C No XXXXXXXXXX355. Balance available Rs .00 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "37550.00",
+        "direction": "DEBIT",
+        "merchant": "CEFT Transfer",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "CARD_PURCHASE",
+      "sms": "Dear Cardholder, Purchase at Star Tac Cellular COLOMBO-11 LK for LKR 600.00 on 04/03/26 02:59 PM has been authorised on your debit card ending #5308.",
+      "expected": {
+        "amount": "600.00",
+        "direction": "DEBIT",
+        "txnDate": "2026-03-04",
+        "merchant": "Star Tac Cellular COLOMBO-11 LK",
+        "maskedTail": "5308"
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "CARD_PURCHASE",
+      "sms": "Dear Cardholder, Purchase at APPLE.COM/BILL SINGAPORE SG for USD 15.99 on 08/03/26 05:09 PM has been authorised on your debit card ending #4273.",
+      "expected": {
+        "amount": "15.99",
+        "direction": "DEBIT",
+        "txnDate": "2026-03-08",
+        "merchant": "APPLE.COM/BILL SINGAPORE SG",
+        "maskedTail": "4273"
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "Credit for Rs. 6,000.00 to 8012349876 at 13:52 at DIGITAL BANKING DIVISION",
+      "expected": {
+        "amount": "6000.00",
+        "direction": "CREDIT",
+        "merchant": "DIGITAL BANKING DIVISION",
+        "maskedTail": "9876"
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "Debit for Rs. 4,700.00 from 8012349876 at 22:19 at DIGITAL BANKING DIVISION",
+      "expected": {
+        "amount": "4700.00",
+        "direction": "DEBIT",
+        "merchant": "DIGITAL BANKING DIVISION",
+        "maskedTail": "9876"
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "CRM_DEPOSIT",
+      "sms": "We wish to confirm a CRM Deposit at 16:57 for Rs. 150,000.00 through POLGAHAW-CRM1 BR to your account 8*****9876",
+      "expected": {
+        "amount": "150000.00",
+        "direction": "CREDIT",
+        "merchant": "POLGAHAW-CRM1 BR",
+        "maskedTail": "9876"
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "LKR 10,025.00 debited to Ac No:01902XXXXX33 on 04/09/25 17:20:15 Reason:MB:Sadah Bal:LKR 6,597.54 Protect from scams *DO NOT SHARE ACCOUNT DETAILS /OTP* Hotline 0112462462",
+      "expected": {
+        "amount": "10025.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-09-04",
+        "merchant": "MB:Sadah",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "LKR 6,000.00 credited to Ac No:01902XXXXX33 on 05/09/25 11:45:55 Reason:CEFT-[NAME] Bal:LKR 12,572.54 ...",
+      "expected": {
+        "amount": "6000.00",
+        "direction": "CREDIT",
+        "txnDate": "2025-09-05",
+        "merchant": "CEFT-[NAME]",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "LKR .41 credited to Ac No:01902XXXXX45 on 29/07/26 22:20:19 Reason:01902XXXXX45:Int.Pd:XX-XX-2026 to XX-XX-2026 Bal:LKR 276.43 ...",
+      "expected": {
+        "amount": "0.41",
+        "direction": "CREDIT",
+        "txnDate": "2026-07-29",
+        "merchant": "Int.Pd:XX-XX-2026 to XX-XX-2026",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "CARD_ALERT",
+      "sms": "HNB SMS ALERT:INTERNET, Account:0190***4833,Location:SURFSHARK* SURFSHARK., US,Amount(Approx.):53.42 USD,Av.Bal:1791.36 LKR,Date:05.09.25,Time:11:51, Hot Line:0112462462",
+      "expected": {
+        "amount": "53.42",
+        "direction": "DEBIT",
+        "txnDate": "2025-09-05",
+        "merchant": "SURFSHARK* SURFSHARK., US",
+        "maskedTail": "4833"
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "CARD_ALERT",
+      "sms": "HNB SMS ALERT: PURCHASE, Debit account:0190***5845,Location:LANKA FILLING STATION, LK,Amount(Approx.):520.00 LKR,Av.Bal:945.00 LKR,Date:28.04.26,Time:00:37, Hot Line:[PHONE]",
+      "expected": {
+        "amount": "520.00",
+        "direction": "DEBIT",
+        "txnDate": "2026-04-28",
+        "merchant": "LANKA FILLING STATION, LK",
+        "maskedTail": "5845"
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ATM_RECEIPT",
+      "sms": "HNB ATM Withdrawal e-Receipt\nAmt(Approx.):  15000.00 LKR\nA/C: 0190***4833\nTxn Fee: 30.00LKR\nLocation: PEOPLE'S BANK         , LKA\nTerm ID: 0280AB01\nDate: 02.06.25 Time:17:05\nTxn No: 2500000001\nAvl Bal: 4592.86 LKR",
+      "expected": {
+        "amount": "15000.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-06-02",
+        "merchant": "PEOPLE'S BANK",
+        "maskedTail": "4833"
+      }
+    },
+    {
+      "bankCode": "7287",
+      "messageType": "CARD_DEBIT",
+      "sms": "Seylan Card ...3687 debit Txn 9500000001 of LKR 5,000.00 done on 19/12/2025 04:18:36 PM at Nippon Bag City          KURUNEGALA LK. Avl bal 2,505.03",
+      "expected": {
+        "amount": "5000.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-12-19",
+        "merchant": "Nippon Bag City KURUNEGALA LK",
+        "maskedTail": "3687"
+      }
+    },
+    {
+      "bankCode": "7287",
+      "messageType": "CARD_DEBIT",
+      "sms": "Seylan Card ...3687 debit Txn 9400000002 of LKR 500.00 done on 06/11/2025 12:08:29 AM at DEBIT CARD ANNUAL FEES. Avl bal 507.43",
+      "expected": {
+        "amount": "500.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-11-06",
+        "merchant": "DEBIT CARD ANNUAL FEES",
+        "maskedTail": "3687"
+      }
+    },
+    {
+      "bankCode": "7287",
+      "messageType": "CARD_DEBIT",
+      "sms": "Seylan Card ...3687 debit Txn 9300000003 of LKR 20,000.00 done on 25/09/2025 10:28:32 AM at POLGAHAW-CRM1 BR       POLGAHAWELA    LK. Avl bal 74,975.23",
+      "expected": {
+        "amount": "20000.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-09-25",
+        "merchant": "POLGAHAW-CRM1 BR POLGAHAWELA LK",
+        "maskedTail": "3687"
+      }
+    },
+    {
+      "bankCode": "7463",
+      "messageType": "POS_TXN",
+      "sms": "POS trx of LKR 1,647.70 at HIGGSFIELD INC. +14088370029 US authorised from your A/C ***0001. Avail. Bal. LKR 2,647.60. Enq 0117756756",
+      "expected": {
+        "amount": "1647.70",
+        "direction": "DEBIT",
+        "merchant": "HIGGSFIELD INC. +14088370029 US",
+        "maskedTail": "0001"
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "Online Transfer Credit Rs 5,000.00 To A/C No XXXXXXXXXX999. Balance available Rs 14,876.54 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "5000.00",
+        "direction": "CREDIT",
+        "merchant": "Online Transfer",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "Transfer Credit Rs 2,500.00 To A/C No XXXXXXXXXX999. Balance available Rs 20,126.29 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "2500.00",
+        "direction": "CREDIT",
+        "merchant": "Transfer",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "CEFT Transfer Debit Rs 500.25 From A/C No XXXXXXXXXX999. Balance available Rs 14,376.29 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "500.25",
+        "direction": "DEBIT",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "Online Transfer Debit Rs 58.00 From A/C No XXXXXXXXXX999. Balance available Rs 51,068.29 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "58.00",
+        "direction": "DEBIT",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7010",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "CEFT Transfer Debit Rs 1,250,000.00 From A/C No XXXXXXXXXX999. Balance available Rs 250.10 - Thank you for banking with BOC",
+      "expected": {
+        "amount": "1250000.00",
+        "direction": "DEBIT",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "CARD_PURCHASE",
+      "sms": "Dear Cardholder, Purchase at KEELLS SUPER COLOMBO 04 for LKR 3,450.00 on 15/04/26 10:24 AM has been authorised on your debit card ending #4273.",
+      "expected": {
+        "amount": "3450.00",
+        "direction": "DEBIT",
+        "txnDate": "2026-04-15",
+        "merchant": "KEELLS SUPER COLOMBO 04",
+        "maskedTail": "4273"
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "ACCOUNT_TXN",
+      "sms": "Credit for Rs. 247,330.00 to 8012349876 at 22:43 at DIGITAL BANKING DIVISION",
+      "expected": {
+        "amount": "247330.00",
+        "direction": "CREDIT",
+        "maskedTail": "9876"
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "CRM_DEPOSIT",
+      "sms": "We wish to confirm a CRM Deposit at 16:59 for Rs. 11,000.00 through KURUN'MA-CRM3 BR to your account 8*****9876 https://vas.combank.net/rec/abcdef",
+      "expected": {
+        "amount": "11000.00",
+        "direction": "CREDIT",
+        "merchant": "KURUN'MA-CRM3 BR",
+        "maskedTail": "9876"
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "JUSTPAY_PAYMENT",
+      "sms": "Dear Customer, your transaction made via \"Justpay\" for Rs.15600.00 has been approved sucessfully. Thank you",
+      "expected": {
+        "amount": "15600.00",
+        "direction": "DEBIT",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "JUSTPAY_PAYMENT",
+      "sms": "Dear Customer, your transaction made via \"Justpay\" for Rs.150.00 has been approved sucessfully. Thank you",
+      "expected": {
+        "amount": "150.00",
+        "direction": "DEBIT",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "JUSTPAY_PAYMENT",
+      "sms": "Dear Customer, your transaction made via \"JP/QR\" for Rs.1250.00 has been approved sucessfully. Thank you",
+      "expected": {
+        "amount": "1250.00",
+        "direction": "DEBIT",
+        "merchant": "JP/QR",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "CARD_ALERT",
+      "sms": "HNB SMS ALERT:INTERNET, Account:0190***4554,Location:PH *DOMINOS PIZZA SRI, LK,Amount(Approx.):2427.00 LKR,Av.Bal:6.64 LKR,Date:23.04.26,Time:17:50, Hot Line:0112462462",
+      "expected": {
+        "amount": "2427.00",
+        "direction": "DEBIT",
+        "txnDate": "2026-04-23",
+        "merchant": "PH *DOMINOS PIZZA SRI, LK",
+        "maskedTail": "4554"
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ATM_RECEIPT",
+      "sms": "HNB ATM Withdrawal e-Receipt\nAmt(Approx.):  2000.00 LKR\nA/C: 0190***4554\nTxn Fee: 5.00LKR\nLocation: HNB MALLAWAPITIYA CRM 01, LKA\nTerm ID: 888277\nDate: 24.04.26 Time:10:15\nTxn No: 3000000004\nAvl Bal: 1001.64 LKR\nHotline:94112462462",
+      "expected": {
+        "amount": "2000.00",
+        "direction": "DEBIT",
+        "txnDate": "2026-04-24",
+        "merchant": "HNB MALLAWAPITIYA CRM 01",
+        "maskedTail": "4554"
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ACCOUNT_CHARGE",
+      "sms": "A Transaction for LKR 25.00 has been debit ed to Ac No:01902XXXXX33 on 05/09/25 05:31:18 . Remarks :HNB Alert Charges.Bal: LKR 6,572.54",
+      "expected": {
+        "amount": "25.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-09-05",
+        "merchant": "HNB Alert Charges",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ACCOUNT_CHARGE",
+      "sms": "A Transaction for LKR 25.00 has been debit ed to Ac No:01902XXXXX33 on 05/09/25 05:31:18 .\nRemarks :HNB Alert Charges.Bal: LKR 6,572.54",
+      "expected": {
+        "amount": "25.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-09-05",
+        "merchant": "HNB Alert Charges",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ACCOUNT_CHARGE",
+      "sms": "A Transaction for LKR 410.90 has been credit ed to Ac No:01902XXXXX45 on 24/06/26 13:54:03 . Remarks :FX MARKUP_37213.91 06/14.Bal: LKR 624.91",
+      "expected": {
+        "amount": "410.90",
+        "direction": "CREDIT",
+        "txnDate": "2026-06-24",
+        "merchant": "FX MARKUP_37213.91 06/14",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7083",
+      "messageType": "ACCOUNT_CHARGE",
+      "sms": "A Transaction for LKR 1.02 has been debit ed to Ac No:01902XXXXX45 on 04/07/26 07:37:54 . Remarks :Finacle Alert Charges.Bal: LKR .00",
+      "expected": {
+        "amount": "1.02",
+        "direction": "DEBIT",
+        "txnDate": "2026-07-04",
+        "merchant": "Finacle Alert Charges",
+        "maskedTail": null
+      }
+    },
+    {
+      "bankCode": "7287",
+      "messageType": "CARD_DEBIT",
+      "sms": "Seylan Card ...3687 debit Txn 9500000004 of LKR 2,870.00 done on 17/12/2025 01:53:31 PM at CARGILLS EXPRESS-YANTHAM KURUNEGALA   LK. Avl bal 7,565.03",
+      "expected": {
+        "amount": "2870.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-12-17",
+        "merchant": "CARGILLS EXPRESS-YANTHAM KURUNEGALA LK",
+        "maskedTail": "3687"
+      }
+    },
+    {
+      "bankCode": "7287",
+      "messageType": "CARD_DEBIT",
+      "sms": "Seylan Card ...3687 debit Txn 9500000005 of LKR 12,000.00 done on 19/12/2025 03:02:03 PM at Peoples Bank           Kurunegala Ra  LK. Avl bal 505.03",
+      "expected": {
+        "amount": "12000.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-12-19",
+        "merchant": "Peoples Bank Kurunegala Ra LK",
+        "maskedTail": "3687"
+      }
+    },
+    {
+      "bankCode": "7287",
+      "messageType": "CARD_DEBIT",
+      "sms": "Seylan Card ...3687 debit Txn 9300000006 of LKR 8,000.00 done on 19/09/2025 07:07:53 AM at ICBS                   POTHUHERA      LK. Avl bal 153,585.23",
+      "expected": {
+        "amount": "8000.00",
+        "direction": "DEBIT",
+        "txnDate": "2025-09-19",
+        "merchant": "ICBS POTHUHERA LK",
+        "maskedTail": "3687"
+      }
+    },
+    {
+      "bankCode": "7463",
+      "messageType": "POS_TXN",
+      "sms": "POS trx of LKR 2,428.00 at DARAZ.LK COLOMBO 03 LK authorised from your A/C ***0001. Avail. Bal. LKR 9,079.35. Enq 0117756756",
+      "expected": {
+        "amount": "2428.00",
+        "direction": "DEBIT",
+        "merchant": "DARAZ.LK COLOMBO 03 LK",
+        "maskedTail": "0001"
+      }
+    }
+  ],
+  "mustNotMatch": [
+    {
+      "why": "BOCONLINE OTP",
+      "sms": "425401 is the one-time password (OTP) to your online payment LKR 1,287.00 from BOC Card 2462 at CARGILLS R. Thank you. Bank of Ceylon"
+    },
+    {
+      "why": "ComBank declined",
+      "sms": "Dear Cardholder, your card was declined due to insufficient funds. The attempted transaction amount was LKR 275.00 at Google CapCut Video E 650-2530000 US on 26/02/26 11:43 PM. Please check your balance and try again."
+    },
+    {
+      "why": "HNB declined",
+      "sms": "HNB SMS ALERT:Transaction for Amt(Approx.):  560.00 LKR declined due to insufficient funds. ... Account: 0190***5845,Location: PickMe Ride, LK,Avl Bal: 276.02 LKR,Date: 24.07.26, Time:06:54,Hotline:[PHONE]"
+    },
+    {
+      "why": "excluded 7056 FUND_TRANSFER",
+      "sms": "Fund transfer request [REF] P 2026-04-16 at 11:47:41 via Combank Online to [NAME] for LKR 15000.00 Inquiries+[PHONE]."
+    },
+    {
+      "why": "OTP",
+      "sms": "Dear Cardholder, please verify the merchant name and transaction amount before entering the One Time Password (OTP). Keep your OTP confidential and do not share it with anyone. Your OTP at Merchant 'SOURCEGRAPH AMPCODE' for USD 0.00 is 125610"
+    },
+    {
+      "why": "OTP",
+      "sms": "Your verification code is 123456. Use this to verify your transfer with HNB Digital Banking\n Do not share this number with anyone"
+    },
+    {
+      "why": "DECLINED",
+      "sms": "Dear Cardholder, your card was declined due to insufficient funds. The attempted transaction amount was USD 15.99 at APPLE.COM/BILL SINGAPORE SG on 08/03/26 04:43 PM. Please check your balance and try again."
+    },
+    {
+      "why": "DECLINED",
+      "sms": "Dear Cardholder, your card was declined due to insufficient funds. The attempted transaction amount was LKR 8,236.21 at DONELY, INC. [PHONE] US on 22/04/26 01:29 PM. Please check your balance and try again."
+    },
+    {
+      "why": "DECLINED",
+      "sms": "TRANSACTION ON YOUR CARD ENDING WITH 4273 AT APPLE.COM/BILL DECLINED DUE TO EXCEEDING DAILY TRANSACTION LIMIT.PL CONTACT 011-2353353."
+    },
+    {
+      "why": "DECLINED",
+      "sms": "TRANSACTION ON YOUR CARD ENDING WITH 4273 AT UBER EATS DECLINED. AMOUNT 1,200.00 EXCEEDS LIMIT."
+    },
+    {
+      "why": "DECLINED",
+      "sms": "Your Reference-BCXXXXXX6783-for the amount Rs.             17,650.00-Sufficient funds are not available for payment, Please fund your account."
+    },
+    {
+      "why": "DECLINED",
+      "sms": "HNB SMS ALERT:Transaction for Amt(Approx.):  1.00 USD declined due to insufficient funds.Please attempt when sufficient funds are available. Account: 0190***5845,Location: PAYPAL, LU,Avl Bal: -23.98 LKR,Date: 14.06.26, Time:20:42,Hotline:[PHONE]"
+    },
+    {
+      "why": "REJECTED/CANCELLED",
+      "sms": "Your Domestic Payment of Rs 300.00 to account [REF] has been rejected due to technical failure. Inquiries +[PHONE]"
+    },
+    {
+      "why": "REJECTED/CANCELLED",
+      "sms": "Your Fund Transfer reference [REF] has been rejected due to invalid credit account. Inquiries +[PHONE]"
+    },
+    {
+      "why": "REJECTED/CANCELLED",
+      "sms": "YOUR TRANSACTION AT Microsoft*Store ON YOUR CARD ENDING WITH 4273 HAS BEEN CANCELLED."
+    },
+    {
+      "why": "PENDING/REQUEST",
+      "sms": "Fund transfer request [REF] P 2026-03-28 at 10:36:04 via Combank Online to [NAME] for LKR 400.00 Inquiries+[PHONE]."
+    },
+    {
+      "why": "NO AMOUNT",
+      "sms": "Dialog Axiata PLC - Mobile  bill payment effected through Combank Digital.  Status - Completed. Reference  [REF]    For inquiries +[PHONE]"
+    },
+    {
+      "why": "NOTIFICATION",
+      "sms": "You received LKR 10,000 from [NAME]\nDo not share OTP & sensitive information with anyone."
+    },
+    {
+      "why": "NOTIFICATION",
+      "sms": "You received LKR 5000 from [NAME]\nDo not share OTP & sensitive information with anyone."
+    },
+    {
+      "why": "INFORMATIONAL",
+      "sms": "Dear Customer, your attempt to login to ComBank Digital failed. For inquiries +[PHONE]"
+    },
+    {
+      "why": "INFORMATIONAL",
+      "sms": "Your temporary password for Flash Digital Banking is[REF]"
+    },
+    {
+      "why": "INFORMATIONAL",
+      "sms": "Dear MR [NAME], You have logged in to Seylan Online Banking/Mobile Banking at 09:45 Hrs. (+5.30 GMT) on 2025-09-25 Not you? Call us on +94112008888"
+    },
+    {
+      "why": "INFORMATIONAL",
+      "sms": "Dear Customer, Your new LKR Statement Savings A/C No. 0100602780001 is ready to be funded. Visit bit.ly/AmanaOnline to sign-up for online banking & bit.ly/AmanaGTC for General T&/C"
+    },
+    {
+      "why": "INFORMATIONAL",
+      "sms": "Dear Customer, Self-declaration forms for YA 2025/26 valid up to 31 March 2026. Submit new declaration forms to the bank to avoid WHT deductions."
+    },
+    {
+      "why": "INFORMATIONAL",
+      "sms": "Dear Customer , We noticed that you have not logged into your ComBank  Digital account for the past 30 days. You can conveniently access your Bank accounts by logging in to ComBank Digital online banking service from wherever you are, 24 hours a day."
+    },
+    {
+      "why": "TRUNCATED",
+      "sms": "A Transaction for LKR 1.02 has been debit ed to Ac No:01902XXXXX45 on 04/07/26 07:37:54 ."
+    },
+    {
+      "why": "OUT OF SCOPE (People's)",
+      "sms": "Dear Sir/Madam, Your A/C 280-2001****68 has been debited by Rs. 500.25 (LPAY Tfr @08:58 22/04/2026).[Av_Bal: Rs. 1,046.27 at the time of SMS generated]"
+    },
+    {
+      "why": "OUT OF SCOPE (People's)",
+      "sms": "Mobile Payment Successful, LKR 100.00 to Mobitel Ref No [PHONE] on 2026-04-15 21:53:17. Call 1961"
+    },
+    {
+      "why": "OUT OF SCOPE (People's)",
+      "sms": "Fund transfer  Successful. LKR 50,000.00 to LOLC Finance PLC Account ****7495 on 2026-04-22 08:58:39. Call 1961"
+    },
+    {
+      "why": "LOW (reconstructed DFCC)",
+      "sms": "Your A/C No: ****1234 has been debited with LKR3,450.00 on 14 Sep 2026 ref: POS KEELLS SUPER. Available bal is LKR12,345.00"
+    },
+    {
+      "why": "LOW (reconstructed DFCC)",
+      "sms": "DEBITED LKR 3,450.00 ON (14/Sep/2026 18:42) CARD: KEELLS SUPER CARD**4521 AVBAL LKR 120,550.00"
+    },
+    {
+      "why": "MARKETING (written for this test)",
+      "sms": "Enjoy 20% off at selected restaurants this weekend with your credit card. T&C apply. Reply STOP to opt out."
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7010 CHEQUE_DEBIT",
+      "sms": "Cash Cheque Debit  CHQ/NO 123456 Rs 180000.00 From A/C No XXXXXXXXXX870. Balance available Rs 12345.67 - Thank you for banking with BOC"
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7056 ATM_WITHDRAWAL",
+      "sms": "Withdrawal at POLGAHAWELA-1 BR POLGAHAWELA KGLK for LKR 25,000.00 on 01/03/26 10:12 AM from card ending #5308. Click link to view the Digital Receipt ... https://vas.combank.net/rec/..."
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7056 QPLUS_PAYMENT",
+      "sms": "Your Q+ transaction at MOBITEL DATA PLANS for LKR 80.00 has been successful. Reference Number [REF]"
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7463 CEFT_INWARD",
+      "sms": "Inward CEFTS trf of LKR 2,000.00 ([NAME])  from: IBFT 100000000001 credited to your A/C ***0001. Avail Bal LKR 4,597.60. Enq 0117756756"
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7463 CEFT_OUTWARD",
+      "sms": "IB CEFTS trf of LKR 4,800.00 & charge of LKR 25.00 ([NAME]) to: [NAME] HNB debited from your A/C ***0001. Avail. Bal. LKR  4,254.35. Enq 0117756756"
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7463 PROFIT_CREDIT",
+      "sms": "Profit of your Savings A/C ***0001 has been distributed to A/C ***0001. Profit Amount (Subject to Withholding Tax)LKR 11.57. Enq 0117756756"
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7056 QPLUS_FUND_TRANSFER",
+      "sms": "Dear Customer,Your Fund Transfer of Rs. 1,900.00 to Account Number XXXXXXXXXXX8871 is successful. Reference Number is [REF]."
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7056 BILL_PAYMENT",
+      "sms": "Bill Payment in the amount of LKR 547.00 was received on 31/03/2026 from the ComBank Digital."
+    },
+    {
+      "why": "NOT SEEDED (review tier) 7083 CARD_REVERSAL",
+      "sms": "TRANSACTION REVERSAL, Credit account:0190***5845,Location:PickMe Ride, LK,Amount:110.00 LKR,Av.Bal:276.02 LKR,Date:09.07.26,Time:14:31, Hot Line:[PHONE]"
+    }
+  ]
+}
