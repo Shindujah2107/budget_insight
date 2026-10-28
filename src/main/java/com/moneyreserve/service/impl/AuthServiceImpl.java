@@ -9,6 +9,7 @@ import com.moneyreserve.domain.BiRefreshToken;
 import com.moneyreserve.domain.OtpPurpose;
 import com.moneyreserve.dto.AuthCodeSentResponse;
 import com.moneyreserve.dto.AuthLoginRequest;
+import com.moneyreserve.dto.AuthProfileUpdateRequest;
 import com.moneyreserve.dto.AuthRegisterRequest;
 import com.moneyreserve.dto.AuthTokenResponse;
 import com.moneyreserve.dto.AuthUserDto;
@@ -227,6 +228,19 @@ public class AuthServiceImpl implements AuthService {
         .findById(caller.userId())
         .map(AuthServiceImpl::toDto)
         .orElseThrow(() -> new BudgetInsightsException(ErrorCode.AUTH_ACCOUNT_NOT_FOUND));
+  }
+
+  @Override
+  @Transactional
+  public AuthUserDto updateProfile(Caller caller, AuthProfileUpdateRequest request) {
+    BiAppUser user =
+        users
+            .findById(caller.userId())
+            .orElseThrow(() -> new BudgetInsightsException(ErrorCode.AUTH_ACCOUNT_NOT_FOUND));
+    user.setFullName(request.fullName().trim());
+    user.setEmail(
+        request.email() == null || request.email().isBlank() ? null : request.email().trim());
+    return toDto(users.save(user));
   }
 
   @Override

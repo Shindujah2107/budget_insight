@@ -3,6 +3,7 @@ package com.moneyreserve.service;
 import com.moneyreserve.config.Caller;
 import com.moneyreserve.dto.AuthCodeSentResponse;
 import com.moneyreserve.dto.AuthLoginRequest;
+import com.moneyreserve.dto.AuthProfileUpdateRequest;
 import com.moneyreserve.dto.AuthRegisterRequest;
 import com.moneyreserve.dto.AuthTokenResponse;
 import com.moneyreserve.dto.AuthUserDto;
@@ -33,6 +34,9 @@ public interface AuthService {
   void logout(String refreshToken);
 
   AuthUserDto me(Caller caller);
+
+  /** Changes the customer's name and email. The phone number is the login and stays as it is. */
+  AuthUserDto updateProfile(Caller caller, AuthProfileUpdateRequest request);
 
   /**
    * Deletes the customer: erases all their Budget Insights data (the same erasure as {@code DELETE

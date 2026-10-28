@@ -236,6 +236,41 @@ class AuthFlowIT {
 
   // ---------------------------------------------------------------------------------
 
+  @Test
+  @DisplayName("the profile's name and email can be changed, and an empty email removes it")
+  void updateProfile() throws Exception {
+    String token = registerAndVerify().get("accessToken").asText();
+
+    ResponseEntity<String> updated =
+        call(
+            HttpMethod.PATCH,
+            "/api/auth/me",
+            token,
+            Map.of("fullName", "  Renamed User ", "email", "renamed@example.com"));
+    assertEquals(200, updated.getStatusCode().value(), updated.getBody());
+    assertEquals("Renamed User", data(updated).get("fullName").asText());
+    assertEquals("renamed@example.com", data(updated).get("email").asText());
+
+    JsonNode me = data(call(HttpMethod.GET, "/api/auth/me", token, null));
+    assertEquals("Renamed User", me.get("fullName").asText());
+    assertEquals(phone, me.get("phone").asText(), "the phone number is the login and stays");
+
+    ResponseEntity<String> cleared =
+        call(HttpMethod.PATCH, "/api/auth/me", token, Map.of("fullName", "Renamed User", "email", ""));
+    assertEquals(200, cleared.getStatusCode().value(), cleared.getBody());
+    assertTrue(data(cleared).path("email").isMissingNode() || data(cleared).get("email").isNull());
+
+    ResponseEntity<String> badEmail =
+        call(HttpMethod.PATCH, "/api/auth/me", token, Map.of("fullName", "Renamed User", "email", "not-an-email"));
+    assertEquals(400, badEmail.getStatusCode().value());
+    ResponseEntity<String> noName =
+        call(HttpMethod.PATCH, "/api/auth/me", token, Map.of("fullName", " "));
+    assertEquals(400, noName.getStatusCode().value());
+    ResponseEntity<String> anonymous =
+        call(HttpMethod.PATCH, "/api/auth/me", null, Map.of("fullName", "Someone"));
+    assertEquals(401, anonymous.getStatusCode().value());
+  }
+
   private JsonNode registerAndVerify() throws Exception {
     ResponseEntity<String> sent = register("Test User", phone);
     assertEquals(200, sent.getStatusCode().value(), sent.getBody());

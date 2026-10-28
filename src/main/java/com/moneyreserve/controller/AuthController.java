@@ -5,6 +5,7 @@ import com.moneyreserve.config.AuthProperties;
 import com.moneyreserve.config.Caller;
 import com.moneyreserve.dto.AuthCodeSentResponse;
 import com.moneyreserve.dto.AuthLoginRequest;
+import com.moneyreserve.dto.AuthProfileUpdateRequest;
 import com.moneyreserve.dto.AuthRefreshRequest;
 import com.moneyreserve.dto.AuthRegisterRequest;
 import com.moneyreserve.dto.AuthTokenResponse;
@@ -23,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -100,6 +102,15 @@ public class AuthController {
   public ResponseEntity<ApiResponse<AuthUserDto>> me(@AuthenticationPrincipal Caller caller) {
     requireEnabled();
     return ok(null, auth.me(requireCaller(caller)));
+  }
+
+  @Operation(summary = "Change the signed-in customer's name and email")
+  @PatchMapping("/me")
+  public ResponseEntity<ApiResponse<AuthUserDto>> updateProfile(
+      @AuthenticationPrincipal Caller caller,
+      @Valid @RequestBody AuthProfileUpdateRequest request) {
+    requireEnabled();
+    return ok("Profile updated.", auth.updateProfile(requireCaller(caller), request));
   }
 
   @Operation(
