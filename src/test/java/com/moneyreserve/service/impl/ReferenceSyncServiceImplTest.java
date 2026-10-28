@@ -46,6 +46,7 @@ class ReferenceSyncServiceImplTest {
 
   @Mock private ConsentService consent;
   @Mock private BiSmsSenderAllowlistRepository senders;
+  @Mock private com.moneyreserve.repository.BiBankRepository banks;
   @Mock private BiBankParserTemplateRepository templates;
   @Mock private BiDeviceSyncStateRepository syncStates;
 

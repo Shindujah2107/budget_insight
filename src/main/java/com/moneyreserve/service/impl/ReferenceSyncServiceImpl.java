@@ -2,6 +2,7 @@ package com.moneyreserve.service.impl;
 
 import com.moneyreserve.config.Caller;
 import com.moneyreserve.config.InsightsProperties;
+import com.moneyreserve.domain.BiBank;
 import com.moneyreserve.domain.BiBankParserTemplate;
 import com.moneyreserve.domain.BiDeviceSyncState;
 import com.moneyreserve.domain.BiSmsSenderAllowlist;
@@ -10,6 +11,7 @@ import com.moneyreserve.dto.ReferenceSyncResponse;
 import com.moneyreserve.dto.SenderAllowlistDto;
 import com.moneyreserve.dto.SmsVocabularyDto;
 import com.moneyreserve.repository.BiBankParserTemplateRepository;
+import com.moneyreserve.repository.BiBankRepository;
 import com.moneyreserve.repository.BiDeviceSyncStateRepository;
 import com.moneyreserve.repository.BiSmsSenderAllowlistRepository;
 import com.moneyreserve.service.ConsentService;
@@ -17,7 +19,9 @@ import com.moneyreserve.service.ReferenceSyncService;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +48,7 @@ public class ReferenceSyncServiceImpl implements ReferenceSyncService {
 
   private final ConsentService consent;
   private final BiSmsSenderAllowlistRepository senders;
+  private final BiBankRepository banks;
   private final BiBankParserTemplateRepository templates;
   private final BiDeviceSyncStateRepository syncStates;
   private final InsightsProperties properties;
@@ -69,6 +74,8 @@ public class ReferenceSyncServiceImpl implements ReferenceSyncService {
     consent.requireActiveConsent(caller.userId());
 
     int serverVersion = templates.findCurrentTemplateVersion();
+    Map<String, String> bankNames =
+        banks.findAll().stream().collect(Collectors.toMap(BiBank::getBankCode, BiBank::getBankName));
     List<SenderAllowlistDto> allowlist =
         senders.findAllByIsActiveTrue().stream()
             .sorted(
@@ -78,6 +85,7 @@ public class ReferenceSyncServiceImpl implements ReferenceSyncService {
                 sender ->
                     SenderAllowlistDto.builder()
                         .bankCode(sender.getBankCode())
+                        .bankName(bankNames.get(sender.getBankCode()))
                         .senderId(sender.getSenderId())
                         .countryCode(sender.getCountryCode())
                         .build())

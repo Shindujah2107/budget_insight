@@ -26,6 +26,9 @@ public class SenderAllowlistDto {
 
   private String bankCode;
 
+  /** The bank's display name, for the bank picker. Null if the bank row is missing. */
+  private String bankName;
+
   /** The sender ID exactly as it appears on the handset, for example a short code or an alpha tag. */
   private String senderId;
 
