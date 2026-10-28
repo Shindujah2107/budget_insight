@@ -133,6 +133,57 @@ class InsightsAggregateRefreshIT {
   }
 
   @Test
+  @DisplayName("editing and deleting a transaction while its month is cached does not hang")
+  void editAndDeleteWithACachedMonth() throws Exception {
+    // The app sends the month with every write, so the response carries the new breakdown. That
+    // breakdown used to be written to the cache from a second transaction, which waited for ever
+    // on the cache row the edit itself had just deleted (PostgreSQL), or failed on a lock
+    // timeout (H2).
+    String range = "?from=" + monthStart + "&to=" + monthEnd;
+    ResponseEntity<String> created =
+        rest.exchange(
+            "/api/insights/transactions" + range,
+            HttpMethod.POST,
+            entity(
+                "{\"amount\":1000,\"currency\":\"LKR\",\"direction\":\"DEBIT\","
+                    + "\"merchant\":\"Edit Cafe\",\"txnDate\":\""
+                    + LocalDate.now()
+                    + "\",\"categoryId\":\""
+                    + diningId
+                    + "\",\"clientRef\":\""
+                    + UUID.randomUUID()
+                    + "\"}"),
+            String.class);
+    assertFalse(created.getStatusCode().isError(), created.getBody());
+    String id =
+        objectMapper.readTree(created.getBody()).path("data").path("transaction").path("id").asText();
+    assertFalse(id.isBlank(), "No transaction id in " + created.getBody());
+
+    breakdown();
+    assertTrue(cacheRow().isPresent(), "The read did not cache the month");
+
+    ResponseEntity<String> edited =
+        rest.exchange(
+            "/api/insights/transactions/" + id + range,
+            HttpMethod.PATCH,
+            entity("{\"amount\":2000}"),
+            String.class);
+    assertEquals(200, edited.getStatusCode().value(), edited.getBody());
+    assertTrue(
+        breakdown().path("total").asText().contains("6321"),
+        "The breakdown after the edit does not include the new amount");
+
+    breakdown();
+    ResponseEntity<String> deleted =
+        rest.exchange(
+            "/api/insights/transactions/" + id + range, HttpMethod.DELETE, authed(), String.class);
+    assertEquals(200, deleted.getStatusCode().value(), deleted.getBody());
+    assertTrue(
+        breakdown().path("total").asText().contains("4321"),
+        "The breakdown after the delete still counts the deleted transaction");
+  }
+
+  @Test
   @DisplayName("a custom date range is served but never cached")
   void aCustomRangeIsNotCached() {
     // Otherwise one customer with a date picker can write a row per range they try, none of which

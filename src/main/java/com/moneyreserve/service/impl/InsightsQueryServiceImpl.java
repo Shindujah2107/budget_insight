@@ -40,6 +40,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
@@ -93,7 +94,14 @@ public class InsightsQueryServiceImpl implements InsightsQueryService {
       return cached.get();
     }
     SpendingBreakdownResponse computed = computeBreakdown(userId, period);
-    cache.write(userId, period, computed);
+    // Only a plain read fills the cache. A create/edit/delete also calls this, inside its own
+    // read-write transaction that has just deleted (and so locked) this user's cache rows; the
+    // cache write runs in a separate transaction and would wait on that lock for ever, while the
+    // edit waits for it. It would also cache figures the edit has not committed yet. The next
+    // read after the edit fills the cache instead.
+    if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+      cache.write(userId, period, computed);
+    }
     log.info(
         "Insights breakdown userId={} period={} categories={} source=computed",
         userId,
