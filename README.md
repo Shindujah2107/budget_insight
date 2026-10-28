@@ -32,8 +32,8 @@ Java 21, Spring Boot 3.4, Maven, Flyway.
    `EXPO_PUBLIC_API_URL=http://localhost:8087` for Expo web on this Mac, or
    `http://<this Mac's LAN IP>:8087` for a phone or emulator.
 
-On the local profile no SMS is sent: each sign-in code is written to the log and is always
-`123456`. `+94 77 000 0000` signs in as a super admin (`moneyreserve.auth.super-admin-phones`).
+On the local profile no SMS is sent: every request gets a fresh random 6-digit code, printed in the
+backend terminal as a `SIGN-IN CODE` banner. `+94 77 000 0000` signs in as a super admin (`moneyreserve.auth.super-admin-phones`).
 
 ## Sign-in
 

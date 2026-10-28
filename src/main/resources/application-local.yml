@@ -1,8 +1,8 @@
 # Local development on this Mac: run with -Dspring-boot.run.profiles=local
 #
 # Uses the local PostgreSQL database `moneyreserve` (one-time setup: scripts/create-local-db.sh). No SMS is
-# sent: each sign-in code is written to the log, and it is always 123456. AuthDevModeGuard refuses
-# to start with these shortcuts on any other profile.
+# sent: each sign-in code is a fresh random 6-digit code, printed in this terminal. AuthDevModeGuard
+# refuses to start with the log-only SMS sender on any other profile.
 
 spring:
   datasource:
@@ -18,8 +18,6 @@ moneyreserve:
 
   auth:
     jwt-secret: ${BI_JWT_SECRET:local-dev-jwt-secret-not-for-any-real-environment}
-    otp:
-      fixed-code: "123456"
     # Signs in as SUPER_ADMIN locally, to try the admin API.
     super-admin-phones: ${SUPER_ADMIN_PHONES:+94770000000}
 
