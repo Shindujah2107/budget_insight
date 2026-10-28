@@ -11,7 +11,7 @@ SET lock_timeout = '3s';
 --     7010 Bank of Ceylon    1 template    sender  BOC
 --     7287 Seylan Bank       1 template    sender  SEYLAN
 --     7463 Amana Bank        1 template    sender  AMANABANK
---   bank_code is moipay_core.bank_list.bank_code as text, confirmed against DEV 2026-09-21.
+--   bank_code is the 4-digit CBSL bank code, as text.
 --
 -- NOT SEEDED
 --   * Sampath 7278, NTB 7162, NSB 7719: real evidence exists but is single-source and in
@@ -46,7 +46,7 @@ SET lock_timeout = '3s';
 --
 -- ACTIVE, AND WHAT KEEPS THAT SAFE
 --   Rows are active so DEV can be tested. Nothing reaches a device until the environment
---   turns on moipay.budget-insights.enabled and .ingest.enabled and the customer has granted
+--   turns on moneyreserve.insights.enabled and .ingest.enabled and the customer has granted
 --   consent (InsightsIngestController.guard). Both flags default to false in every profile.
 --   Every format rests on third-party redacted samples (leadsgen-tech/salli, Apache-2.0),
 --   evidence status COMMUNITY_SOURCE_NEEDS_VALIDATION, and Compliance gate 2 is still open.

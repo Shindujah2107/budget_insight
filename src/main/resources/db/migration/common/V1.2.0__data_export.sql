@@ -18,7 +18,6 @@
 CREATE TABLE IF NOT EXISTS budget_insights.bi_data_export (
     id              uuid                        NOT NULL,
     user_id         uuid                        NOT NULL,
-    tenant_id       uuid,
     -- The serialised export document. text, not jsonb: nothing queries inside it, and a
     -- document that must round-trip byte for byte should not be reformatted by the column
     -- type on the way in.

@@ -19,7 +19,7 @@
 --   letters and punctuation.
 --
 -- FLAGS
---   Both phases ship OFF (moipay.budget-insights.format-discovery.enabled / samples-enabled).
+--   Both phases ship OFF (moneyreserve.insights.format-discovery.enabled / samples-enabled).
 --   Creating the tables changes nothing until an environment turns them on.
 --
 -- VOCABULARY

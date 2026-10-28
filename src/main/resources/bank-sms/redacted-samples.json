@@ -5,7 +5,7 @@
     "references are already replaced by the source ([NAME], [PHONE], [REF]).",
     "Account numbers and transaction/reference numbers are further replaced here with synthetic digits of the same length.",
     "One marketing message in mustNotMatch was written for this test, and is labelled so.",
-    "These are third-party samples: evidence status COMMUNITY_SOURCE_NEEDS_VALIDATION, not MoiPay-sourced.",
+    "These are third-party samples: evidence status COMMUNITY_SOURCE_NEEDS_VALIDATION, not MoneyReserve-sourced.",
     "expected.maskedTail null means the device must send no tail. txnDate is omitted where the SMS has no date",
     "(the template falls back to the SMS received date)."
   ],

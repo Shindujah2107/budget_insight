@@ -10,8 +10,7 @@ WORKDIR /app
 RUN apk add --no-cache curl
 COPY --from=build /app/target/*.jar app.jar
 
-# Run as an unprivileged user (least privilege — audit finding: container was
-# running as root). Same fixed UID/GID convention as the other MoiPay services.
+# Run as an unprivileged user rather than root.
 RUN addgroup -g 1001 appuser && \
     adduser -D -u 1001 -G appuser appuser && \
     chown -R appuser:appuser /app

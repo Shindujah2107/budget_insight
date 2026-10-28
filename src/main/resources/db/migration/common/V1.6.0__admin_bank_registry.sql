@@ -2,14 +2,11 @@
 -- V1.6.0 — Bank registry managed from the Admin Dashboard
 -- =====================================================================================================
 -- Until now the banks Budget Insights reads SMS for came from application config
--- (moipay.budget-insights.admin.banks), so adding a bank needed a redeploy. This table replaces that
+-- (moneyreserve.insights.admin.banks), so adding a bank needed a redeploy. This table replaces that
 -- list as the source of truth for "banks Budget Insights supports": the Admin Dashboard creates,
 -- renames, deactivates and (when never used) deletes rows here.
 --
--- Codes are the 4-digit CBSL bank codes, the same ones core's moipay_core.bank_list uses, so the two
--- lists line up. This service does not share core's database and does not write to bank_list: that
--- table drives payment routing (JustPay codes, branches) and a bank is not payable just because
--- Budget Insights can read its SMS.
+-- Codes are the 4-digit CBSL bank codes.
 --
 -- bank_code is the natural key and is never changed after creation: senders, templates, accounts and
 -- (through templates) transactions all carry it as text.
@@ -32,7 +29,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_bi_bank_name_ci ON budget_insights.bi_bank 
 
 COMMENT ON TABLE budget_insights.bi_bank IS
     'Banks Budget Insights supports (SMS senders, parser templates). Managed from the Admin Dashboard. '
-    'Codes match core moipay_core.bank_list (CBSL codes); this table is not a copy of it.';
+    'Codes are the 4-digit CBSL bank codes.';
 
 -- The six banks previously configured in application.yml (created_by NULL = migration)
 INSERT INTO budget_insights.bi_bank (bank_code, bank_name, is_active, created_at) VALUES

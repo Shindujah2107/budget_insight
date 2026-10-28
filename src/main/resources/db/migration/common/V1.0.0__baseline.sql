@@ -1,25 +1,14 @@
 -- ============================================================================
--- V1.0.0  BASELINE  (budget-insights)
+-- V1.0.0  BASELINE  (MoneyReserve)
 --
--- Migrated from MoiPay-Backend V2.19.0__budget_insights_schema.sql (commit bdd15510).
--- Same fourteen tables, same columns, same check constraints.
---
--- WHAT CHANGED, AND WHY
---   * Schema is budget_insights, not moipay_core.
---   * The twelve foreign keys into moipay_core."user"(uid) and moipay_core.tenant
---     (tenant_id) are GONE. Those tables live in the backend's database; this service
---     has its own. user_id and tenant_id are still NOT NULL and still indexed, but the
---     database can no longer prove they point at a real user — the gateway does, by
---     only ever issuing a request with claims it validated.
---   * The nine foreign keys BETWEEN Budget Insights tables are unchanged. Those are
---     inside one database and still enforced.
---
--- Flyway adoption: a fresh database runs this file. Anywhere baselined at 1.0.0 skips
--- it. Future schema changes go in V1.0.3+.
+-- The Budget Insights tables: transactions, accounts, budgets, consent, categories
+-- and the reference data that categorises bank SMS. Every customer row is keyed by
+-- user_id, the id of the signed-in MoneyReserve user (bi_app_user, V1.16.0); foreign
+-- keys between these tables are enforced.
 -- ============================================================================
 
 CREATE SCHEMA IF NOT EXISTS budget_insights;
--- Budget Insights (MIP-8 / CR-BUDGET-INSIGHTS-01) — schema.
+-- Budget Insights — schema.
 --
 -- Fourteen additive tables, all prefixed bi_ so the slice is identifiable in the
 -- database. Nothing here alters an existing table and no existing table gains a
@@ -124,7 +113,6 @@ CREATE INDEX IF NOT EXISTS ix_bi_tpl_active
 CREATE TABLE IF NOT EXISTS budget_insights.bi_account (
     id                  uuid                        NOT NULL,
     user_id             uuid                        NOT NULL,
-    tenant_id           uuid                        NOT NULL,
     bank_code           varchar(16),
     instrument_type     varchar(8)                  NOT NULL,
     masked_tail         varchar(8)                  NOT NULL,
@@ -153,7 +141,6 @@ CREATE INDEX IF NOT EXISTS ix_bi_account_user
 CREATE TABLE IF NOT EXISTS budget_insights.bi_transaction (
     id                  uuid                        NOT NULL,
     user_id             uuid                        NOT NULL,
-    tenant_id           uuid                        NOT NULL,
     account_id          uuid,
     amount              numeric(19, 2)              NOT NULL,
     currency            varchar(3)                  NOT NULL DEFAULT 'LKR',
@@ -229,7 +216,6 @@ CREATE INDEX IF NOT EXISTS ix_bi_txn_audit_txn
 CREATE TABLE IF NOT EXISTS budget_insights.bi_budget (
     id              uuid                        NOT NULL,
     user_id         uuid                        NOT NULL,
-    tenant_id       uuid                        NOT NULL,
     period_start    date                        NOT NULL,
     period_end      date                        NOT NULL,
     overall_limit   numeric(19, 2)              NOT NULL,
@@ -272,7 +258,6 @@ CREATE TABLE IF NOT EXISTS budget_insights.bi_budget_category_limit (
 CREATE TABLE IF NOT EXISTS budget_insights.bi_consent (
     id                  uuid                        NOT NULL,
     user_id             uuid                        NOT NULL,
-    tenant_id           uuid                        NOT NULL,
     consent_version     varchar(16)                 NOT NULL,
     policy_hash         varchar(128)                NOT NULL,
     channel             varchar(16)                 NOT NULL,
@@ -300,9 +285,8 @@ CREATE TABLE IF NOT EXISTS budget_insights.bi_compliance_event (
     source          varchar(32)                 NOT NULL,
     action          varchar(32)                 NOT NULL,
     device_id_hash  varchar(64),
-    tenant_id       uuid,
     CONSTRAINT pk_bi_compliance_event PRIMARY KEY (id),
-    CONSTRAINT ck_bi_ce_source CHECK (source IN ('SMS_PARSER', 'API_GATEWAY', 'APP'))
+    CONSTRAINT ck_bi_ce_source CHECK (source IN ('SMS_PARSER', 'SERVER', 'APP'))
 );
 
 CREATE INDEX IF NOT EXISTS ix_bi_ce_type_time
@@ -315,7 +299,6 @@ CREATE INDEX IF NOT EXISTS ix_bi_ce_type_time
 CREATE TABLE IF NOT EXISTS budget_insights.bi_raw_message (
     id              uuid                        NOT NULL,
     user_id         uuid                        NOT NULL,
-    tenant_id       uuid                        NOT NULL,
     bank_code       varchar(16),
     ciphertext      text                        NOT NULL,
     parse_status    varchar(16)                 NOT NULL,

@@ -47,6 +47,6 @@ COMMENT ON COLUMN budget_insights.bi_compliance_event.client_ref_hash IS
     'service raises for itself. Exists so a retried report is the same incident, not a second '
     'one.';
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_bi_ce_tenant_client_ref
-    ON budget_insights.bi_compliance_event (tenant_id, client_ref_hash)
+CREATE UNIQUE INDEX IF NOT EXISTS ux_bi_ce_client_ref
+    ON budget_insights.bi_compliance_event (client_ref_hash)
     WHERE client_ref_hash IS NOT NULL;

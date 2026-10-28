@@ -8,8 +8,7 @@ SET lock_timeout = '3s';
 --   Java enum's constants: instrument_type, direction, source on bi_transaction,
 --   parse_status, match_type, channel, action on bi_transaction_audit, and source on
 --   bi_compliance_event itself. Two columns were missed, and one column carries a
---   compliance claim that nothing enforces. Both gaps came across from core with the
---   rest of the DDL; neither is new.
+--   compliance claim that nothing enforces.
 --
 --   bi_compliance_event.event_type / .action
 --       This is the one table that is never purged -- not on consent withdrawal, not on

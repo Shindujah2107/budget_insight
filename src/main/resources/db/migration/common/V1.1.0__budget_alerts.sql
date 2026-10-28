@@ -34,7 +34,6 @@ SET lock_timeout = '3s';
 CREATE TABLE IF NOT EXISTS budget_insights.bi_budget_alert (
     id                  uuid                        NOT NULL,
     user_id             uuid                        NOT NULL,
-    tenant_id           uuid                        NOT NULL,
 
     -- The budget period the crossing belongs to, matching bi_budget.period_start.
     period_start        date                        NOT NULL,

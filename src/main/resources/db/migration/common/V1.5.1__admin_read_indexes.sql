@@ -8,15 +8,15 @@
 -- staging, UAT and production (architecture doc §2.6). It cannot run inside a transaction,
 -- hence executeInTransaction=false in the .sql.conf file beside it, and it waits for every open transaction to finish,
 -- so Flyway must not hold its own lock in a transaction while it runs:
--- spring.flyway.postgresql.transactional-lock=false (set in application-aws-*.yml).
+-- spring.flyway.postgresql.transactional-lock=false (set in application.yml).
 --
 -- IF NOT EXISTS keeps it idempotent. If a CONCURRENTLY build is interrupted it leaves an
 -- INVALID index with the same name; drop it (DROP INDEX CONCURRENTLY ...) and re-run.
 -- =====================================================================================
 SET lock_timeout = '3s';
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_bi_txn_tenant_date
-    ON budget_insights.bi_transaction (tenant_id, txn_date) WHERE deleted_at IS NULL;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_bi_txn_date
+    ON budget_insights.bi_transaction (txn_date) WHERE deleted_at IS NULL;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_bi_txn_template
     ON budget_insights.bi_transaction (parser_template_id) WHERE deleted_at IS NULL;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_bi_txn_category

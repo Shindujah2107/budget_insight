@@ -31,7 +31,7 @@ SET lock_timeout = '3s';
 --   is the active one).
 --
 -- Layer 0 (ATM_RECEIPT, CRM_DEPOSIT, ACCOUNT_CHARGE -> OTHER) is configuration, not data:
---   moipay.budget-insights.categorisation.message-type-categories.
+--   moneyreserve.insights.categorisation.message-type-categories.
 -- Golden regression: src/test/resources/categorisation/*.csv (MerchantCategorisationGoldenTest
 --   reads this file's VALUES, so the tested rules are exactly the migrated ones).
 -- =====================================================================================

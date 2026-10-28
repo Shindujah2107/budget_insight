@@ -6,7 +6,7 @@
 -- the rest of the reference data. The YAML lists remain only as a fallback.
 --
 -- NULL means "not counted": the category's spend is reported as unbucketed. OTHER and TRANSFERS
--- stay NULL on purpose (see the comment on recommendations in application-aws-*.yml).
+-- stay NULL on purpose.
 
 ALTER TABLE budget_insights.bi_category
     ADD COLUMN IF NOT EXISTS spend_bucket varchar(8);

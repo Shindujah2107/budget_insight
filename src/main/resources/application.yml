@@ -1,21 +1,45 @@
+# MoneyReserve backend — settings shared by every profile.
+#
+# Secrets and machine-specific values come from environment variables. The `local` profile
+# (application-local.yml) supplies development defaults for them and runs
+# against a local PostgreSQL database (scripts/create-local-db.sh creates it).
+
 spring:
   application:
-    name: moipay-budget-insights
+    name: moneyreserve-api
+
+  # PostgreSQL. Tables live in the budget_insights schema, created and migrated by Flyway;
+  # currentSchema puts it on the connection's search path.
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/moneyreserve?currentSchema=budget_insights}
+    username: ${DB_USERNAME:moneyreserve}
+    password: ${DB_PASSWORD:}
 
   jpa:
     open-in-view: false
     show-sql: false
+    hibernate:
+      # Flyway owns the schema; Hibernate never changes it.
+      ddl-auto: none
     properties:
       hibernate:
+        jdbc:
+          time_zone: UTC
         format_sql: false
 
-  # Flyway is OFF by default (local keeps Hibernate ddl-auto). aws-dev/aws-staging
-  # profiles turn it on and switch ddl-auto to none.
   flyway:
-    enabled: false
+    enabled: true
+    schemas: budget_insights
+    default-schema: budget_insights
+    locations: classpath:db/migration/common
+    # V1.5.1 builds indexes CONCURRENTLY, which cannot run while Flyway holds a transactional lock.
+    postgresql:
+      transactional-lock: false
+    # V1.5.1 carries a .conf file beside it; naming validation would reject that.
+    validate-migration-naming: false
 
 server:
-  port: 8087
+  port: ${PORT:8087}
 
 springdoc:
   swagger-ui:
@@ -29,117 +53,69 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
-      show-details: when_authorized
+      show-details: never
 
-moipay:
-  # Browser origins permitted to call this service. Localhost only here; real origins are set
-  # per environment through CORS_ALLOWED_ORIGINS on the task definition. The mobile app is a
-  # native client, sends no Origin header, and is unaffected by this list.
+moneyreserve:
+  # Browser origins allowed to call the API (Expo web). The phone app is a native client and is
+  # not affected by CORS.
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8083}
-  budget-insights:
-    # admin.username / admin.password are deliberately absent. They previously carried literal
-    # values here, which gave any run without an AWS profile a known HTTP Basic login over every
-    # endpoint. With nothing configured the account is created with an unrecorded random password
-    # and cannot be authenticated as; set BUDGET_INSIGHTS_ADMIN_USERNAME and
-    # BUDGET_INSIGHTS_ADMIN_PASSWORD where the non-gateway path is actually needed.
-    # Everything below ships OFF. The feature is enabled per environment, never by default.
-    enabled: false
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:8090,http://localhost:19006}
+
+  insights:
+    # Every app feature is on. Each flag still exists in code (a switched-off feature answers 404
+    # or 501), so one can be turned off here without a release.
+    enabled: true
     lookback-months: 6
     currency: LKR
-    default-category-alert-threshold-pct: 80
-    masked-card-to-backend-enabled: false
-    device-hash-salt: ""
-    # Day counts on the budget ring are worked out here, not in the container's UTC.
     zone: Asia/Colombo
+    default-category-alert-threshold-pct: 80
     pace-tolerance-pct: 0
-    # R1 release gate: adding, correcting and removing transactions by hand.
-    # DIP line 1648 names this flag and the service shipped without it, which left manual
-    # entry as the one release with no rollback of its own. Off, the three write routes
-    # answer 501 and every read path is untouched.
+    # Last 3–4 digits of a card or account found in a bank SMS.
+    masked-card-to-backend-enabled: true
+    # Salt for hashing device ids on the compliance route. Blank switches that route off (501).
+    device-hash-salt: ${DEVICE_HASH_SALT:}
+
     manual:
-      enabled: false
-    # Per-release gate beneath the master switch. R2: monthly target and summary.
+      enabled: true
     budget:
-      enabled: false
-    # R3: consent, and the data-rights routes beneath it. `version` is the policy
-    # version in force -- raising it invalidates every existing consent at once.
+      enabled: true
     consent:
-      enabled: false
+      enabled: true
+      # Raising this asks every customer to accept the SMS consent again.
       version: "1.0"
-    # R4 release gate: SMS ingest and the device reference sync.
     ingest:
-      enabled: false
+      enabled: true
       max-batch-size: 200
       rate-limit-messages: 600
       rate-limit-window-seconds: 60
-      # Empty means any well-formed message type is accepted. Narrow it per environment once
-      # Compliance answers whether account-balance messages are in scope (dependency D-3).
       accepted-message-types: []
-    # R5 release gate: the payment activity chart and its account filter.
     activity:
-      enabled: false
-    # R6 release gate: threshold alerts. In-app only -- no SMS, push or email.
+      enabled: true
     alerts:
-      enabled: false
-    # BI-36: POST /compliance/events, the route a handset reports an OTP or PIN it detected and
-    # destroyed on. Deliberately has NO release flag -- it records a control that is already
-    # running on every handset, and a flag would only buy the option of running the control and
-    # not recording it. What withholds it is device-hash-salt: with none set the route answers
-    # 501 and the device holds its queue.
+      enabled: true
     compliance:
       max-batch-size: 200
       rate-limit-messages: 600
       rate-limit-window-seconds: 60
-      # How far ahead of the server a device's clock may be. occurred_at is the device's
-      # timestamp, so that a handset offline for a day does not file yesterday under today.
       clock-skew-minutes: 10
-    # R6: 50/30/20 recommendations. The percentages are shares of the customer's monthly target,
-    # not of income -- Budget Insights never sees income.
+    # 50/30/20 split of the customer's monthly target. OTHER and TRANSFERS are deliberately in no
+    # bucket and come back as `unbucketed`.
     recommendations:
-      enabled: false
+      enabled: true
       needs-pct: 50
       wants-pct: 30
       savings-pct: 20
       trailing-months: 3
-      # The 50/30/20 mapping, approved 20 September 2026. A business rule, not a property of the
-      # category, which is why it lives here: changing a bucket is a config change, not a release.
-      #
-      # OTHER and TRANSFERS are deliberately in NO list. OTHER is what the categoriser falls back
-      # to when it cannot tell, and bucketing it would distort every percentage with spend nobody
-      # has classified. A TRANSFERS row might be saving, supporting family, or moving money between
-      # the customer's own accounts -- this service cannot see which, and guessing would be worse
-      # than reporting it separately. Both are returned under `unbucketed` so the parts still sum
-      # to the whole.
-      needs:
-        - BILLS_UTILITIES
-        - UTILITIES
-        - TRANSPORT
-        - HEALTH_CARE
-        - EDUCATION
-        - WORK
-      wants:
-        - DINING_OUT
-        - ENTERTAINMENT
-        - SHOPPING
-        - SUBSCRIPTIONS
-        - TRAVEL
-        - GIFTS_DONATION
-        - GYM
-        - PERSONAL_CARE
-      savings:
-        - DEBT_PAYMENTS
+      needs: [BILLS_UTILITIES, UTILITIES, TRANSPORT, HEALTH_CARE, EDUCATION, WORK]
+      wants: [DINING_OUT, ENTERTAINMENT, SHOPPING, SUBSCRIPTIONS, TRAVEL, GIFTS_DONATION, GYM, PERSONAL_CARE]
+      savings: [DEBT_PAYMENTS]
+    # Fixture data instead of the database. Never on outside local/test.
     stub:
       enabled: false
-    # SMS format discovery: learning bank SMS formats no template reads, without receiving any
-    # message. Phase 1 (enabled) accepts daily counts per sender; Phase 2 (samples-enabled)
-    # accepts message skeletons -- vocabulary ids and placeholders, never text -- and needs
-    # Compliance sign-off, the consent text that covers it (raise consent.version with it), and
-    # user-hash-key from Secrets Manager (32+ characters; never rotate it while samples exist).
-    # A format is shown to Super Admins only once min-distinct-users (floor 5) have sent it.
+    # Learning unknown bank SMS formats. Off: needs a hashing key and its own consent wording.
     format-discovery:
       enabled: false
       samples-enabled: false
@@ -149,20 +125,35 @@ moipay:
       max-stats-per-request: 100
       max-samples-per-request: 20
       max-samples-per-user-per-day: 50
-      user-hash-key: ${BI_FORMAT_USER_HASH_KEY:}
-    # BI-27: how long a generated export stays downloadable before the retention job removes it.
-    # This is the whole privacy position on exports -- an export is a second copy of everything the
-    # service holds about one customer, and its lifetime is the only thing limiting the exposure.
+      user-hash-key: ${FORMAT_USER_HASH_KEY:}
+    # How long a generated data export stays downloadable.
     export:
       retention-hours: 24
-    # BI-29 / BI-30 scheduled jobs. Deliberately NOT beneath the master feature flag: data already
-    # captured must go on being expired whether or not customers can see the screen. `enabled` is
-    # for local development, not a production control.
+    # Nightly retention and aggregate-refresh jobs.
     jobs:
       enabled: true
       retention-cron: "0 15 2 * * *"
       refresh-cron: "0 45 2 * * *"
 
+
+
+  # App sign-in: mobile number + SMS code, then JWTs issued by this service.
+  auth:
+    enabled: true
+    # HS256 signing key, at least 32 bytes. Required; changing it signs everyone out.
+    jwt-secret: ${BI_JWT_SECRET:}
+    issuer: moneyreserve-api
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+    otp:
+      length: 6
+      ttl: 5m
+      max-attempts: 5
+      resend-interval: 30s
+      max-sends-per-hour: 10
+    # Mobile numbers that get the SUPER_ADMIN role (the admin API) when they sign in.
+    super-admin-phones: ${SUPER_ADMIN_PHONES:}
+
 logging:
   level:
-    com.moipay.budgetinsights: INFO
+    com.moneyreserve: INFO

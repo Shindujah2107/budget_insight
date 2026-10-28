@@ -1,69 +1,78 @@
-# MoiPay Budget Insights
+# MoneyReserve API
 
-SMS-derived spending analysis: categorisation, manual entry and correction, spending
-breakdown, and (from R3) monthly budgets and alerts.
+The backend for the MoneyReserve app: sign-in with a mobile number and SMS code, and Budget
+Insights — spending read from bank SMS on the phone, categories, manual entries, monthly budgets,
+alerts, consent and data export/erasure. Also an admin API for managing banks, SMS senders,
+parser templates, merchant rules and categories.
 
-    Mobile → API Gateway → Budget Insights → budget_insights DB
+    MoneyReserve app → this API → PostgreSQL (database `moneyreserve`, schema `budget_insights`)
 
-Sibling of MoiPay-CaseEngine, MoiPay-FeeEngine and MoiPay-SplitEngine, and built to the
-same shape: Java 21, Spring Boot 3.4.1, `com.moipay.*`, gateway-injected identity, its own
-database and schema, Flyway from `db/migration/common`.
+Java 21, Spring Boot 3.4, Maven, Flyway.
 
 | | |
 |---|---|
-| Local port | 8087 |
-| ALB route | `/insights/*` |
-| Database / schema | `moipay_budget_insights` / `budget_insights` |
-| Config prefix | `moipay.budget-insights.*` |
-| OpenAPI | `/insights/v3/api-docs/openapi` |
+| Port | 8087 |
+| Database | `moneyreserve` (schema `budget_insights`, created by Flyway) |
+| Config prefix | `moneyreserve.*` |
+| API docs | `/swagger-ui.html` (spec at `/v3/api-docs`) |
 
-## Migrated out of MoiPay-Backend
+## Run it locally
 
-R0 and R1 were built inside `MoiPay-Backend/core` and committed there as `bdd15510`
-("MIP-8 | Budgetting Insights & Analytics-foundation"). This service is that code, with
-the same behaviour and the same HTTP contract. Four things had to change, and each is a
-consequence of the service owning its own database and sitting behind the gateway.
+1. **Database (once).** Creates user `moneyreserve` (password `moneyreserve`) and database
+   `moneyreserve` on your local PostgreSQL:
 
-**Relations are UUIDs.** Core modelled every association as a JPA `@ManyToOne`, including
-`BiTransaction → User`. `user` and `tenant` live in another service's database now, so
-those could not survive; the intra-feature ones were converted too, because the sibling
-services model relations that way and a half-and-half entity model is worse than either.
-`InsightsMapper.toDto` therefore takes the account as an argument, and the query service
-loads a page of accounts in one query rather than firing a lazy proxy per row.
+       ./scripts/create-local-db.sh
 
-**Twelve foreign keys were dropped.** Seven into `moipay_core."user"(uid)` and five into
-`moipay_core.tenant(tenant_id)`. The columns are still `NOT NULL` and still indexed, but
-the database can no longer prove they point at a real user. The gateway does, by only ever
-forwarding claims it validated. The nine foreign keys *between* Budget Insights tables are
-unchanged and still enforced.
+2. **Start the API** with the `local` profile. Flyway creates and migrates the tables on start-up.
 
-**There are no scopes.** Core guarded every endpoint with `SCOPE_INSIGHTS_READ` or
-`SCOPE_INSIGHTS_TXN_WRITE`, resolved by querying its `rbac` schema. This service has no
-such schema and no way to resolve a scope, so — as in all three sibling services — the
-control is ownership scoping inside every repository query. Every finder here takes the
-owner; none can be called without one. `V2.19.2__budget_insights_scopes.sql` stays in core
-for the gateway's use.
+       mvn spring-boot:run -Dspring-boot.run.profiles=local
 
-**One error body changed.** A request that is authenticated but carries no customer
-identity answered with core's `AUTH_UNAUTHORIZED`; that code belongs to core's auth
-surface and did not move. It now answers 401 with `error: "Unauthorized"`. Every one of
-the twelve `MOI.BI.*` codes is unchanged, and so is the `ApiResponse` success envelope.
+3. **Point the app at it.** In the Expo app's `.env.local`:
+   `EXPO_PUBLIC_API_URL=http://localhost:8087` for Expo web on this Mac, or
+   `http://<this Mac's LAN IP>:8087` for a phone or emulator.
 
-## Running locally
+On the local profile no SMS is sent: each sign-in code is written to the log and is always
+`123456`. `+94 77 000 0000` signs in as a super admin (`moneyreserve.auth.super-admin-phones`).
 
-    mvn spring-boot:run -Dspring-boot.run.profiles=local
+## Sign-in
 
-H2 in memory, Hibernate creates the schema, the feature is on and serving **fixture
-data** — `moipay.budget-insights.stub.enabled=true`. `InsightsStubModeGuard` refuses to
-start the service if that is ever true outside `local`, `test`, `aws-dev` or
-`aws-staging`, because fixture spending data reaching UAT sign-off would be worse than the
-feature being unavailable.
+| Route | Body | Result |
+|---|---|---|
+| `POST /api/auth/register` | `{fullName, phone, email?}` | texts a 6-digit code |
+| `POST /api/auth/login` | `{phone}` | texts a 6-digit code |
+| `POST /api/auth/verify` | `{phone, code, purpose}` | `{accessToken, refreshToken, expiresIn, user}` |
+| `POST /api/auth/refresh` | `{refreshToken}` | a new token pair (the old refresh token stops working) |
+| `POST /api/auth/logout` | `{refreshToken}` | ends that session |
+| `GET /api/auth/me` | — | the signed-in user |
+| `DELETE /api/auth/account` | — | erases the user's Budget Insights data and deletes the account |
 
-Swagger: <http://localhost:8087/swagger-ui.html> (basic auth, `admin` / `admin123`).
+Every other route needs `Authorization: Bearer <accessToken>`. The access token lasts 15 minutes;
+refresh tokens last 30 days and rotate on each use (reusing an old one ends the whole session).
+Users are `CUSTOMER` by default; numbers listed in `moneyreserve.auth.super-admin-phones` get
+`SUPER_ADMIN`, which the admin API (`/api/insights/admin/**`) requires.
 
-## Scope
+Error bodies carry a code such as `MR.AUT.E.004`; see the API docs for the full list.
 
-R0 (contract and stub) and R1 (categorisation, manual transactions, breakdown) only.
-R2 onward — consent, on-device capture, ingest, the OTP compliance path, budgets, the
-aggregate cache read path — is designed but not built. The entities and enums those
-releases need are present because they were part of the R0 schema; the services are not.
+## Configuration
+
+`src/main/resources/application.yml` holds everything, with secrets from environment variables;
+`application-local.yml` adds development defaults.
+
+| Variable | Used for |
+|---|---|
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | PostgreSQL connection |
+| `BI_JWT_SECRET` | signing access tokens (32+ bytes; required outside `local`) |
+| `SUPER_ADMIN_PHONES` | comma-separated admin numbers |
+| `CORS_ALLOWED_ORIGINS` | browser origins (Expo web) |
+| `DEVICE_HASH_SALT` | hashing device ids on the compliance route |
+
+Sign-in currently only has a log-only SMS sender, so it refuses to start outside the `local` and
+`test` profiles until a real SMS provider is added.
+
+## Tests
+
+    mvn verify
+
+Unit tests run under Surefire, integration tests (`*IT`) under Failsafe. Tests use an in-memory
+H2 database, so they need no PostgreSQL. Integration tests sign in with real access tokens through
+`TestTokens`.

@@ -1,17 +1,14 @@
 # Integration-test profile.
 #
-# Modelled on application-local.yml: H2 in PostgreSQL mode, Hibernate creating the schema,
-# Flyway off. Two deliberate differences from local:
+# H2 in PostgreSQL mode, Hibernate creating the schema, Flyway off, so the tests need no
+# PostgreSQL. One deliberate difference from local:
 #
 #   stub.enabled is FALSE. InsightsStubModeGuard refuses to start when stub mode is on outside
 #   its permitted profile list, and "test" is not on that list -- correctly, since the guard is
 #   fail-closed by design. More to the point, an integration test that asserted against fixture
 #   data would be asserting against the fixtures rather than against the service.
 #
-#   security.gateway-auth-enabled is TRUE. It is the deployed posture in every AWS environment,
-#   so it is the posture the authorisation tests have to run against. Individual test classes
-#   override it to false with @SpringBootTest(properties = ...) where the disabled path is what
-#   is under test.
+# Tests sign in with real access tokens (TestTokens), never with identity headers.
 spring:
   datasource:
     url: jdbc:h2:mem:budgetinsights-it;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
@@ -26,17 +23,12 @@ spring:
   flyway:
     enabled: false
 
-moipay:
+moneyreserve:
   # Explicit rather than inherited: the CORS allowlist is under test, and a test that silently
   # picked up whatever the default happened to be would pass through a change that widened it.
   cors:
     allowed-origins: http://localhost:3000,http://localhost:8083
-  security:
-    origin-verify:
-      enabled: false
-      enforce: false
-      secret: ""
-  budget-insights:
+  insights:
     enabled: true
     currency: LKR
     zone: Asia/Colombo
@@ -95,13 +87,15 @@ moipay:
         - DEBT_PAYMENTS
     stub:
       enabled: false
-    security:
-      gateway-auth-enabled: true
-      # A test-only value, and not a secret: it exists so a test can present a matching header.
-      # Production values arrive from Secrets Manager via GATEWAY_INTERNAL_TOKEN.
-      gateway-internal-token: integration-test-gateway-token
+
+  # The fixed code lets AuthFlowIT sign in; AuthDevModeGuard permits it on the test profile only.
+  auth:
+    enabled: true
+    jwt-secret: integration-test-jwt-secret-0123456789abcdef
+    otp:
+      fixed-code: "123456"
 
 logging:
   level:
-    com.moipay.budgetinsights: INFO
+    com.moneyreserve: INFO
     org.springframework.security: INFO
