@@ -24,8 +24,9 @@ Java 21, Spring Boot 3.4, Maven, Flyway.
        ./scripts/create-local-db.sh
 
 2. **Start the API** with the `local` profile. Flyway creates and migrates the tables on start-up.
+   The script picks Java 21 itself and works from any folder:
 
-       mvn spring-boot:run -Dspring-boot.run.profiles=local
+       ./scripts/run-local.sh
 
 3. **Point the app at it.** In the Expo app's `.env.local`:
    `EXPO_PUBLIC_API_URL=http://localhost:8087` for Expo web on this Mac, or
