@@ -153,6 +153,14 @@ moneyreserve:
       max-sends-per-hour: 10
     # Mobile numbers that get the SUPER_ADMIN role (the admin API) when they sign in.
     super-admin-phones: ${SUPER_ADMIN_PHONES:}
+    sms:
+      # log: codes are written to the log, not sent (local/test only). textlk: real SMS via Text.lk.
+      provider: ${SMS_PROVIDER:log}
+      text-lk:
+        base-url: ${TEXTLK_BASE_URL:https://app.text.lk/api/v3}
+        api-token: ${TEXTLK_API_TOKEN:}
+        sender-id: ${TEXTLK_SENDER_ID:}
+        timeout: 10s
 
 logging:
   level:

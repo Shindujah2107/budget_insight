@@ -66,9 +66,22 @@ Error bodies carry a code such as `MR.AUT.E.004`; see the API docs for the full 
 | `SUPER_ADMIN_PHONES` | comma-separated admin numbers |
 | `CORS_ALLOWED_ORIGINS` | browser origins (Expo web) |
 | `DEVICE_HASH_SALT` | hashing device ids on the compliance route |
+| `SMS_PROVIDER`, `TEXTLK_*` | how sign-in codes are sent (see below) |
 
-Sign-in currently only has a log-only SMS sender, so it refuses to start outside the `local` and
-`test` profiles until a real SMS provider is added.
+### Sign-in SMS (Text.lk)
+
+Locally, codes are printed in the terminal (`SMS_PROVIDER=log`, the default). To send real SMS
+through [Text.lk](https://text.lk/docs/send-sms/):
+
+| Variable | Value |
+|---|---|
+| `SMS_PROVIDER` | `textlk` |
+| `TEXTLK_API_TOKEN` | the API token from your Text.lk dashboard (secret; never logged) |
+| `TEXTLK_SENDER_ID` | your approved sender ID, at most 11 characters (e.g. `MoneyRsrv`) |
+| `TEXTLK_BASE_URL` | optional, defaults to `https://app.text.lk/api/v3` |
+
+Outside the `local` and `test` profiles the backend refuses to start with the log sender or a fixed
+code, so a deployment always sends real codes.
 
 ## Tests
 

@@ -47,19 +47,42 @@ public class AuthDevModeGuard {
     }
     boolean fixedCode =
         auth.getOtp().getFixedCode() != null && !auth.getOtp().getFixedCode().isBlank();
+    String provider = auth.getSms().getProvider() == null ? "log" : auth.getSms().getProvider();
+    boolean realSms = "textlk".equalsIgnoreCase(provider);
+    if (realSms) {
+      AuthProperties.TextLk textLk = auth.getSms().getTextLk();
+      if (isBlank(textLk.getApiToken()) || isBlank(textLk.getSenderId())) {
+        throw new IllegalStateException(
+            "moneyreserve.auth.sms.provider is textlk but TEXTLK_API_TOKEN or TEXTLK_SENDER_ID is"
+                + " missing.");
+      }
+      if (textLk.getSenderId().length() > 11) {
+        throw new IllegalStateException("TEXTLK_SENDER_ID can be at most 11 characters.");
+      }
+    } else if (!"log".equalsIgnoreCase(provider)) {
+      throw new IllegalStateException(
+          "moneyreserve.auth.sms.provider must be log or textlk, not '" + provider + "'.");
+    }
     List<String> active = List.of(environment.getActiveProfiles());
     boolean devProfile = !active.isEmpty() && DEV_PERMITTED_PROFILES.containsAll(active);
-    if (!devProfile) {
-      // The only SMS sender writes codes to the log, and a fixed code would let anyone sign in.
+    if (!devProfile && (!realSms || fixedCode)) {
+      // The log sender writes codes to the log, and a fixed code would let anyone sign in.
       log.error(
-          "App sign-in has no real SMS sender yet and only runs on local/test; profiles {}", active);
+          "App sign-in with the log SMS sender or a fixed code only runs on local/test; profiles {}",
+          active);
       throw new IllegalStateException(
-          "App sign-in only runs on the local or test profile until a real SMS sender exists.");
+          "Outside local/test, app sign-in needs a real SMS sender (SMS_PROVIDER=textlk) and no"
+              + " fixed code.");
     }
     log.info(
-        "App sign-in: enabled=true, sms=log, fixedCode={}, accessTtl={}, refreshTtl={}",
+        "App sign-in: enabled=true, sms={}, fixedCode={}, accessTtl={}, refreshTtl={}",
+        realSms ? "textlk" : "log",
         fixedCode,
         auth.getAccessTokenTtl(),
         auth.getRefreshTokenTtl());
+  }
+
+  private static boolean isBlank(String value) {
+    return value == null || value.isBlank();
   }
 }

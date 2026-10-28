@@ -52,6 +52,33 @@ public class AuthProperties {
 
   private Otp otp = new Otp();
 
+  private Sms sms = new Sms();
+
+  /** Who sends the sign-in codes. */
+  @Getter
+  @Setter
+  public static class Sms {
+    /**
+     * {@code log} writes each code to the application log instead of sending it (local and test
+     * only, enforced by {@link AuthDevModeGuard}); {@code textlk} sends real SMS through Text.lk.
+     */
+    private String provider = "log";
+
+    private TextLk textLk = new TextLk();
+  }
+
+  /** Text.lk, the Sri Lankan SMS gateway (https://text.lk/docs/send-sms/). */
+  @Getter
+  @Setter
+  public static class TextLk {
+    private String baseUrl = "https://app.text.lk/api/v3";
+    /** API token, sent as a bearer token. A secret: from {@code TEXTLK_API_TOKEN}, never logged. */
+    private String apiToken = "";
+    /** The sender ID Text.lk approved for this account, at most 11 characters. */
+    private String senderId = "";
+    private Duration timeout = Duration.ofSeconds(10);
+  }
+
   @Getter
   @Setter
   public static class Otp {
