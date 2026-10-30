@@ -19,6 +19,13 @@ moneyreserve:
     # A purge firing while you debug is noise, not signal.
     jobs:
       enabled: false
+    # SMS format discovery on, and one phone is enough to see a candidate in the admin dashboard
+    # (FormatDiscoveryLocalGuard refuses that floor outside local/test).
+    format-discovery:
+      enabled: true
+      samples-enabled: true
+      local-min-distinct-users: 1
+      user-hash-key: ${FORMAT_USER_HASH_KEY:local-dev-format-hash-key-not-a-secret}
 
   auth:
     jwt-secret: ${BI_JWT_SECRET:local-dev-jwt-secret-not-for-any-real-environment}

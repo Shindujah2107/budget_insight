@@ -176,6 +176,13 @@ public class InsightsProperties {
      */
     private int minDistinctUsers = 5;
 
+    /**
+     * Local testing only: a lower floor, so one developer's phone can produce a format candidate.
+     * Unset everywhere else; {@link FormatDiscoveryLocalGuard} refuses to start outside local and
+     * test when it is set.
+     */
+    private Integer localMinDistinctUsers;
+
     /** How long one user's sample of a format is kept. */
     private int sampleTtlDays = 90;
 
@@ -200,8 +207,14 @@ public class InsightsProperties {
       return userHashKey != null && userHashKey.length() >= 32;
     }
 
-    /** The k-anonymity floor. Configuration can raise it, never lower it below 5. */
+    /**
+     * The k-anonymity floor. Configuration can raise it, never lower it below 5, except with
+     * {@code localMinDistinctUsers} on a local or test profile.
+     */
     public int effectiveMinDistinctUsers() {
+      if (localMinDistinctUsers != null && localMinDistinctUsers >= 1) {
+        return localMinDistinctUsers;
+      }
       return Math.max(5, minDistinctUsers);
     }
   }
