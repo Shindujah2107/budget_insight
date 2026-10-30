@@ -39,11 +39,11 @@ import org.springframework.transaction.annotation.Transactional;
  * SMS format discovery for the Super Admin: which banks need templates, which message formats
  * real customers receive that nothing reads, and a head start on the template for one.
  *
- * <p><b>The k-anonymity floor is enforced in the query, not here and not in the UI.</b> A format
+ * <p><b>The customer floor is enforced in the query, not here and not in the UI.</b> A format
  * fewer than {@code effectiveMinDistinctUsers()} people sent does not exist as far as any admin
- * route is concerned: not in the list, not by id, not as a draft. Bank wording repeats across
- * customers; anything particular to one customer does not, and that is the whole safeguard for a
- * format that slipped something odd past the grammar.
+ * route is concerned: not in the list, not by id, not as a draft. The default is 1, so every new
+ * format can be reviewed; what keeps a single customer's report safe to show is the skeleton
+ * grammar (fixed vocabulary and placeholders only, no digits, OTP-checked).
  *
  * <p><b>"Covered" is computed from the live templates.</b> A format is shown as covered when a
  * published template reads the sample built from it ({@link FormatCoverage}) — the same test the

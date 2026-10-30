@@ -19,12 +19,10 @@ moneyreserve:
     # A purge firing while you debug is noise, not signal.
     jobs:
       enabled: false
-    # SMS format discovery on, and one phone is enough to see a candidate in the admin dashboard
-    # (FormatDiscoveryLocalGuard refuses that floor outside local/test).
+    # SMS format discovery on: new bank formats from this phone appear in the admin dashboard.
     format-discovery:
       enabled: true
       samples-enabled: true
-      local-min-distinct-users: 1
       user-hash-key: ${FORMAT_USER_HASH_KEY:local-dev-format-hash-key-not-a-secret}
 
   auth:

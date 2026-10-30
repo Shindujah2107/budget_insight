@@ -119,7 +119,8 @@ moneyreserve:
     format-discovery:
       enabled: false
       samples-enabled: false
-      min-distinct-users: 5
+      # Customers who must report a format before admins see it; 1 shows every new format.
+      min-distinct-users: ${FORMAT_MIN_DISTINCT_USERS:1}
       sample-ttl-days: 90
       stat-retention-days: 90
       max-stats-per-request: 100

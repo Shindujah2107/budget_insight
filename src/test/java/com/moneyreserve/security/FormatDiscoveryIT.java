@@ -46,7 +46,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 /**
  * SMS format discovery end to end: a handset's counts and skeletons in, the admin's coverage
- * report and format candidates out, the 5-customer floor, withdrawal and erasure, retention, and
+ * report and format candidates out, listing from the first customer, withdrawal and erasure, retention, and
  * a format becoming RESOLVED once a live template reads it.
  *
  * <p>Every test uses its own sender id, so the tests do not see each other's formats.
@@ -173,32 +173,18 @@ class FormatDiscoveryIT {
   // ---------------------------------------------------------------------------------
 
   @Test
-  @DisplayName("a format reaches the admin only at 5 different customers; one customer counts once")
-  void fiveCustomerFloor() throws Exception {
+  @DisplayName("a format reaches the admin from the first customer; one customer counts once")
+  void firstCustomerListed() throws Exception {
     String sender = uniqueSender();
     List<String> tokens = combankTokens();
-    List<UUID> users = new ArrayList<>();
-    for (int i = 0; i < 4; i++) {
-      UUID u = consentedUser();
-      users.add(u);
-      JsonNode r = post(SAMPLES, u, samplesBody(sender, tokens));
-      assertEquals("ACCEPTED", r.path("results").get(0).path("status").asText(), r.toString());
-    }
-    // The same customer again is one customer.
-    JsonNode again = post(SAMPLES, users.get(0), samplesBody(sender, tokens));
-    assertEquals("DUPLICATE", again.path("results").get(0).path("status").asText());
+    UUID first = consentedUser();
+    JsonNode r = post(SAMPLES, first, samplesBody(sender, tokens));
+    assertEquals("ACCEPTED", r.path("results").get(0).path("status").asText(), r.toString());
 
-    BiSmsFormatCandidate stored = candidateOf(sender);
-    assertEquals(4, stored.getDistinctUsers());
-    assertEquals(0, listFor(sender).size(), "below the floor nothing is listed");
-    assertEquals(404, admin().call(HttpMethod.GET, CANDIDATES + "/" + stored.getId(), null).getStatusCode().value());
-
-    users.add(consentedUser());
-    post(SAMPLES, users.get(4), samplesBody(sender, tokens));
     List<JsonNode> listed = listFor(sender);
     assertEquals(1, listed.size());
     JsonNode item = listed.get(0);
-    assertEquals(5, item.path("distinctUsers").asInt());
+    assertEquals(1, item.path("distinctUsers").asInt());
     assertEquals(
         "Dear Cardholder, Purchase at {W} for LKR {AMT} on {DATE:dd/MM/yy} {TIME:hh:mm a} has been"
             + " authorised on your debit card ending #{N}.",
@@ -206,11 +192,19 @@ class FormatDiscoveryIT {
     assertFalse(item.toString().contains("KEELLS"));
     assertFalse(item.toString().contains("2,450"));
 
-    // Withdrawal takes this customer's sample with it, and the format drops back below the floor.
-    ResponseEntity<String> withdrawn = exchange(CONSENT, HttpMethod.DELETE, users.get(4), null);
+    // The same customer again is one customer; a second customer makes two.
+    JsonNode again = post(SAMPLES, first, samplesBody(sender, tokens));
+    assertEquals("DUPLICATE", again.path("results").get(0).path("status").asText());
+    assertEquals(1, candidateOf(sender).getDistinctUsers());
+    UUID second = consentedUser();
+    post(SAMPLES, second, samplesBody(sender, tokens));
+    assertEquals(2, listFor(sender).get(0).path("distinctUsers").asInt());
+
+    // Withdrawal takes that customer's sample with it.
+    ResponseEntity<String> withdrawn = exchange(CONSENT, HttpMethod.DELETE, second, null);
     assertTrue(withdrawn.getStatusCode().is2xxSuccessful(), withdrawn.getBody());
-    assertEquals(4, candidateOf(sender).getDistinctUsers());
-    assertEquals(0, listFor(sender).size());
+    assertEquals(1, candidateOf(sender).getDistinctUsers());
+    assertEquals(1, listFor(sender).size());
   }
 
   @Test

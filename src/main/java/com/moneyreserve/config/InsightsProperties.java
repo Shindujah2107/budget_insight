@@ -171,17 +171,11 @@ public class InsightsProperties {
     private boolean samplesEnabled = false;
 
     /**
-     * Distinct users before an admin may see a format. Values below 5 are ignored: see {@link
-     * #effectiveMinDistinctUsers()}.
+     * Distinct users before an admin may see a format. 1 (the default) shows a format from its
+     * first report, so an admin can review and approve every new bank format; raise it to require
+     * several customers first.
      */
-    private int minDistinctUsers = 5;
-
-    /**
-     * Local testing only: a lower floor, so one developer's phone can produce a format candidate.
-     * Unset everywhere else; {@link FormatDiscoveryLocalGuard} refuses to start outside local and
-     * test when it is set.
-     */
-    private Integer localMinDistinctUsers;
+    private int minDistinctUsers = 1;
 
     /** How long one user's sample of a format is kept. */
     private int sampleTtlDays = 90;
@@ -207,15 +201,9 @@ public class InsightsProperties {
       return userHashKey != null && userHashKey.length() >= 32;
     }
 
-    /**
-     * The k-anonymity floor. Configuration can raise it, never lower it below 5, except with
-     * {@code localMinDistinctUsers} on a local or test profile.
-     */
+    /** Customers needed before a format is listed: the setting, never below 1. */
     public int effectiveMinDistinctUsers() {
-      if (localMinDistinctUsers != null && localMinDistinctUsers >= 1) {
-        return localMinDistinctUsers;
-      }
-      return Math.max(5, minDistinctUsers);
+      return Math.max(1, minDistinctUsers);
     }
   }
 
