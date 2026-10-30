@@ -8,6 +8,14 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Local-only settings that aren't committed (e.g. SUPER_ADMIN_PHONES=+9477XXXXXXX for the admin dashboard).
+if [[ -f .env.local ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env.local
+  set +a
+fi
+
 JAVA21=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 if [[ ! -x "$JAVA21/bin/java" ]]; then
   # java_home -v 21 means "21 or newer", so check it really is 21.

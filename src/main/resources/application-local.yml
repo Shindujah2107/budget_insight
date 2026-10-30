@@ -9,6 +9,10 @@ spring:
     password: ${DB_PASSWORD:moneyreserve}
 
 moneyreserve:
+  # Expo web and the admin dashboard (moneyreserve_admin, port 8095) on this Mac.
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:8090,http://localhost:19006,http://localhost:8095}
+
   insights:
     # Development-only values; never use them anywhere real.
     device-hash-salt: ${DEVICE_HASH_SALT:local-dev-salt-not-a-secret}
@@ -18,7 +22,8 @@ moneyreserve:
 
   auth:
     jwt-secret: ${BI_JWT_SECRET:local-dev-jwt-secret-not-for-any-real-environment}
-    # Signs in as SUPER_ADMIN locally, to try the admin API.
+    # Signs in as SUPER_ADMIN locally, to try the admin API. Put your own number in
+    # .env.local (SUPER_ADMIN_PHONES=+9477…); scripts/run-local.sh reads it and git ignores it.
     super-admin-phones: ${SUPER_ADMIN_PHONES:+94770000000}
 
 logging:

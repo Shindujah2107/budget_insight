@@ -13,3 +13,6 @@ target/
 
 # OS
 .DS_Store
+
+# Local-only settings read by scripts/run-local.sh
+.env.local
