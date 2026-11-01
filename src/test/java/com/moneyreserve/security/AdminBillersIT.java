@@ -154,6 +154,14 @@ class AdminBillersIT {
     assertEquals("MONTHLY", club.path("cadence").asText());
     assertEquals("ZZ HILL CLUB", club.path("suggestedTerms").get(0).asText());
     assertEquals(4, club.size(), "name, count, cadence and terms only: " + club);
+
+    AdminTestSupport admin = admin();
+    admin.ensureOther();
+    assertEquals(201, admin.config(HttpMethod.POST, "/billers", biller("ZZ_HILL", "\"ZZ HILL CLUB\"")).getStatusCode().value());
+    assertTrue(admin.publishAll().getStatusCode().is2xxSuccessful());
+    for (JsonNode row : AdminTestSupport.data(admin.config(HttpMethod.GET, "/recurring-payees", null))) {
+      assertTrue(!"ZZ HILL CLUB".equals(row.path("payee").asText()), "a published biller covers it before bills refresh");
+    }
   }
 
   private void follow(String payeeKey, BillCadence cadence) {

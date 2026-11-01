@@ -13,6 +13,7 @@ import com.moneyreserve.dto.AdminWriteResult;
 import com.moneyreserve.exception.AdminFieldError;
 import com.moneyreserve.exception.BudgetInsightsException;
 import com.moneyreserve.exception.ErrorCode;
+import com.moneyreserve.repository.BiBillerRepository;
 import com.moneyreserve.repository.BiUserBillRepository;
 import com.moneyreserve.service.AdminBillerService;
 import com.moneyreserve.service.calc.MerchantTerms;
@@ -45,6 +46,7 @@ public class AdminBillerServiceImpl implements AdminBillerService {
   private final AdminDrafts drafts;
   private final AdminReleaseVersion releases;
   private final BiUserBillRepository userBills;
+  private final BiBillerRepository billers;
   private final InsightsProperties properties;
 
   @Override
@@ -136,10 +138,14 @@ public class AdminBillerServiceImpl implements AdminBillerService {
       String cadence = row[1] instanceof BillCadence c ? c.name() : String.valueOf(row[1]);
       byPayee.computeIfAbsent(payee, k -> new HashMap<>()).merge(cadence, ((Number) row[2]).longValue(), Long::sum);
     }
+    // A biller published since these bills were last refreshed already covers its payee.
+    List<MerchantTerms> live = new ArrayList<>();
+    billers.findAllByIsActiveTrueOrderBySortOrderAsc().forEach(b -> live.add(MerchantTerms.parse(b.getMatchTerms())));
     List<AdminRecurringPayee> out = new ArrayList<>();
     for (Map.Entry<String, Map<String, Long>> e : byPayee.entrySet()) {
       long customers = e.getValue().values().stream().mapToLong(Long::longValue).sum();
-      if (customers < MIN_CUSTOMERS) {
+      List<String> tokens = MerchantText.tokens(e.getKey());
+      if (customers < MIN_CUSTOMERS || live.stream().anyMatch(t -> t.match(tokens).isPresent())) {
         continue;
       }
       String cadence =
