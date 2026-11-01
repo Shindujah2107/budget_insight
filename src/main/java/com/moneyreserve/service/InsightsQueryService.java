@@ -45,9 +45,27 @@ public interface InsightsQueryService {
    */
   PaymentActivityResponse activity(UUID userId, LocalDate weekStart, UUID accountId);
 
+  /**
+   * One page of the customer's ledger, both directions unless {@code direction} narrows it, with
+   * whole-period totals for the same scope. {@code accountId} narrows to one of the customer's own
+   * accounts (another customer's id simply matches nothing).
+   */
+  com.moneyreserve.dto.LedgerPageResponse ledger(
+      UUID userId,
+      LocalDate from,
+      LocalDate to,
+      com.moneyreserve.domain.TxnDirection direction,
+      UUID accountId,
+      boolean uncategorised,
+      int page,
+      int size);
+
   List<AccountDto> accounts(UUID userId);
 
   List<CategoryDto> categories();
+
+  /** Every category, turned-off ones included (flagged {@code active=false}), in display order. */
+  List<CategoryDto> categories(boolean includeInactive);
 
   /** Resolves and validates a requested period, enforcing the approved look-back. */
   InsightsPeriod period(LocalDate from, LocalDate to);

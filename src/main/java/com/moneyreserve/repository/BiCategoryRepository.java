@@ -13,4 +13,6 @@ public interface BiCategoryRepository extends JpaRepository<BiCategory, UUID> {
   Optional<BiCategory> findByCodeAndIsActiveTrue(String code);
 
   List<BiCategory> findAllByIsActiveTrueOrderBySortOrderAsc();
+
+  List<BiCategory> findAllByOrderBySortOrderAsc();
 }

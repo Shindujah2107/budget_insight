@@ -41,6 +41,61 @@
           }
         },
         {
+          "name": "Recorded transactions, money out and money in (ledger)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/transactions?from=2026-10-01&to=2026-10-31&page=0&size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-31"
+                },
+                {
+                  "key": "direction",
+                  "value": "CREDIT",
+                  "disabled": true,
+                  "description": "DEBIT or CREDIT; omit for both"
+                },
+                {
+                  "key": "accountId",
+                  "value": "{{accountId}}",
+                  "disabled": true,
+                  "description": "one of your accounts; omit for all"
+                },
+                {
+                  "key": "uncategorised",
+                  "value": "true",
+                  "disabled": true,
+                  "description": "only money out no rule matched (categorySource FALLBACK)"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Both directions, newest first (stable order across pages). totals cover the whole filtered period: moneyOut/moneyIn with counts and incomeCoverage RECORDED (money in is only what reached the service, so no net flow is returned). Owner-scoped: another customer's rows or accounts match nothing. totals.uncategorised/uncategorisedCount: money out no rule matched (needs a category). Each transaction carries categorySource RULE | USER | FALLBACK."
+          }
+        },
+        {
           "name": "Transactions in one category",
           "request": {
             "method": "GET",
@@ -87,9 +142,17 @@
                 "api",
                 "insights",
                 "categories"
+              ],
+              "query": [
+                {
+                  "key": "includeInactive",
+                  "value": "true",
+                  "description": "Also list categories turned off in the Admin Dashboard (active=false), so older transactions can still show them. Default false.",
+                  "disabled": true
+                }
               ]
             },
-            "description": "The 17 seeded categories in display order, with their icon keys. Shared reference data — the same for every customer."
+            "description": "The categories in display order: code, names (name, nameSi, nameTa), icon key, colour (#RRGGBB, from the Admin Dashboard), 50/30/20 bucket and active flag. Shared reference data — the same for every customer."
           }
         },
         {

@@ -215,6 +215,33 @@ public class InsightsController {
     return ok(queries.categoryTransactions(caller.userId(), categoryId, from, to, page, size));
   }
 
+  /**
+   * The customer's recorded transactions, money out and money in, newest first. The breakdown
+   * routes list spending only; this is the one list that includes money in, so a client can show a
+   * complete ledger for a period without one request per category. Totals cover the whole filtered
+   * period, so a dashboard never has to add up pages. Not stubbed: it is a plain read of real rows.
+   */
+  @Operation(summary = "Recorded transactions (both directions) for a period, with period totals")
+  @GetMapping("/transactions")
+  public ResponseEntity<?> ledger(
+      @AuthenticationPrincipal Caller caller,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      @RequestParam(required = false) com.moneyreserve.domain.TxnDirection direction,
+      @RequestParam(required = false) UUID accountId,
+      @RequestParam(defaultValue = "false") boolean uncategorised,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "50") int size) {
+    requireCaller(caller);
+    ResponseEntity<?> unavailable = featureGuard();
+    if (unavailable != null) {
+      return unavailable;
+    }
+    return ok(
+        queries.ledger(
+            caller.userId(), from, to, direction, accountId, uncategorised, page, size));
+  }
+
   @Operation(summary = "Linked accounts for the All Accounts filter, masked tails only")
   @GetMapping("/accounts")
   public ResponseEntity<?> accounts(@AuthenticationPrincipal Caller caller) {
@@ -229,9 +256,15 @@ public class InsightsController {
     return okList(queries.accounts(caller.userId()));
   }
 
-  @Operation(summary = "The supported spending categories, in display order")
+  @Operation(
+      summary = "The supported spending categories, in display order",
+      description =
+          "Active categories only, unless includeInactive=true: then turned-off ones are listed too"
+              + " (active=false) so the app can still show them on older transactions.")
   @GetMapping("/categories")
-  public ResponseEntity<?> categories(@AuthenticationPrincipal Caller caller) {
+  public ResponseEntity<?> categories(
+      @AuthenticationPrincipal Caller caller,
+      @RequestParam(name = "includeInactive", defaultValue = "false") boolean includeInactive) {
     requireCaller(caller);
     ResponseEntity<?> unavailable = featureGuard();
     if (unavailable != null) {
@@ -240,7 +273,7 @@ public class InsightsController {
     if (stubbing()) {
       return okList(fixtures.categories());
     }
-    return okList(queries.categories());
+    return okList(queries.categories(includeInactive));
   }
 
   // ---------------------------------------------------------------------------------

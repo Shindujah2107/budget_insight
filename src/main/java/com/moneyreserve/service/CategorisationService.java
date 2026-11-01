@@ -24,7 +24,34 @@ public interface CategorisationService {
    * moneyreserve.insights.categorisation.message-type-categories}); otherwise the merchant rules
    * decide (layers 1–4), and {@code OTHER} is the fallback (layer 5).
    */
-  BiCategory categorise(CategorisationInput input);
+  default BiCategory categorise(CategorisationInput input) {
+    return decide(input).category();
+  }
+
+  /**
+   * The category and why: {@code RULE} when the message type or a merchant rule decided (even when
+   * it decided OTHER), {@code FALLBACK} when nothing matched and OTHER is only the default.
+   */
+  Decision decide(CategorisationInput input);
+
+  /**
+   * As {@link #decide(CategorisationInput)}, but this customer's own "always use this category for
+   * this merchant" choice wins first (source {@code USER}). Never consults another customer's.
+   */
+  default Decision decide(java.util.UUID userId, CategorisationInput input) {
+    return decide(input);
+  }
+
+  /**
+   * Remembers this customer's category for a merchant, for their future rows. Returns the merchant
+   * key it was stored under, or null when the merchant has nothing to match on.
+   */
+  default String remember(java.util.UUID userId, String merchant, java.util.UUID categoryId) {
+    return null;
+  }
+
+  /** A category and the reason it was chosen. */
+  record Decision(BiCategory category, com.moneyreserve.domain.CategorySource source) {}
 
   /**
    * Returns the category for a merchant string alone (no message type, direction unknown).

@@ -63,6 +63,7 @@ public class InsightsMapper {
         .source(txn.getSource() == null ? null : txn.getSource().name())
         .editable(TxnSource.MANUAL.equals(txn.getSource()))
         .isUserCategorised(Boolean.TRUE.equals(txn.getIsUserCategorised()))
+        .categorySource(txn.getCategorySource() == null ? null : txn.getCategorySource().name())
         .build();
   }
 
@@ -73,6 +74,11 @@ public class InsightsMapper {
         .name(category.getNameEn())
         .iconKey(category.getIconKey())
         .sortOrder(category.getSortOrder() == null ? null : category.getSortOrder().intValue())
+        .colourHex(category.getColourHex())
+        .nameSi(category.getNameSi())
+        .nameTa(category.getNameTa())
+        .active(!Boolean.FALSE.equals(category.getIsActive()))
+        .spendBucket(category.getSpendBucket())
         .build();
   }
 

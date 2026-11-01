@@ -104,7 +104,8 @@ class DataRightsIT {
           new Owned("BiRawMessage", BY_USER),
           new Owned("BiInsightCache", BY_USER),
           new Owned("BiDeviceSyncState", BY_USER),
-          new Owned("BiDataExport", BY_USER));
+          new Owned("BiDataExport", BY_USER),
+          new Owned("BiUserMerchantCategory", BY_USER));
 
   /**
    * Shared across every customer. Nothing in them is anyone's to export or erase.
@@ -173,6 +174,7 @@ class DataRightsIT {
   @Autowired private BiRawMessageRepository rawMessages;
   @Autowired private BiInsightCacheRepository caches;
   @Autowired private BiDeviceSyncStateRepository syncStates;
+  @Autowired private com.moneyreserve.repository.BiUserMerchantCategoryRepository merchantChoices;
 
   private final UUID alice = UUID.randomUUID();
   private final UUID bob = UUID.randomUUID();
@@ -365,6 +367,7 @@ class DataRightsIT {
       case "BiConsent" -> "consentHistory";
       case "BiRawMessage" -> "rawMessages";
       case "BiDeviceSyncState" -> "deviceSyncState";
+      case "BiUserMerchantCategory" -> "merchantChoices";
       default -> null;
     };
   }
@@ -563,6 +566,19 @@ class DataRightsIT {
             .lastSyncedAt(now)
             .lastIngestSeq(1L)
             .templateVersion(1)
+            .createdAt(now)
+            .build());
+
+    merchantChoices.save(
+        com.moneyreserve.domain.BiUserMerchantCategory.builder()
+            .id(UUID.randomUUID())
+            .userId(user)
+            .merchantKey("FIXTURE MERCHANT " + user)
+            .categoryId(transactions.findAll().stream()
+                .filter(t -> user.equals(t.getUserId()))
+                .findFirst()
+                .orElseThrow()
+                .getCategoryId())
             .createdAt(now)
             .build());
   }

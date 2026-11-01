@@ -265,10 +265,13 @@ class InsightsTransactionServiceImplTest {
   @DisplayName("a manual add without a chosen category takes the engine's, unlatched")
   void manualAddUsesEngineCategory() {
     when(transactions.findByUserIdAndIdempotencyKey(eq(USER), any())).thenReturn(Optional.empty());
-    when(categorisation.categorise(
+    when(categorisation.decide(
+            any(),
             org.mockito.ArgumentMatchers.<CategorisationInput>argThat(
                 i -> i != null && "CEYPETCO FUEL".equals(i.merchant()))))
-        .thenReturn(category(TRANSPORT, "TRANSPORT"));
+        .thenReturn(
+            new CategorisationService.Decision(
+                category(TRANSPORT, "TRANSPORT"), com.moneyreserve.domain.CategorySource.RULE));
 
     service.create(caller,
         CreateTransactionRequest.builder()

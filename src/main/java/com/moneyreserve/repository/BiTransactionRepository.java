@@ -204,6 +204,78 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
       @Param("to") LocalDate to,
       Pageable pageable);
 
+  /** A customer's live rows that name a merchant, for applying their merchant choice. */
+  List<BiTransaction> findAllByUserIdAndMerchantIsNotNullAndDeletedAtIsNull(UUID userId);
+
+  /**
+   * The ledger list: every live transaction of one customer in a period, money out and money in,
+   * optionally narrowed to one direction and one account. Same total order as {@link
+   * #pageCategorySpend}, so pages never repeat or skip a row.
+   */
+  @Query(
+      """
+      SELECT t FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.txnDate BETWEEN :from AND :to
+        AND t.deletedAt IS NULL
+        AND (:direction IS NULL OR t.direction = :direction)
+        AND (:accountId IS NULL OR t.accountId = :accountId)
+        AND (:source IS NULL OR t.categorySource = :source)
+      ORDER BY t.txnDate DESC, t.txnTimestamp DESC NULLS LAST, t.createdAt DESC, t.id DESC
+      """)
+  Page<BiTransaction> pageLedger(
+      @Param("userId") UUID userId,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to,
+      @Param("direction") com.moneyreserve.domain.TxnDirection direction,
+      @Param("accountId") UUID accountId,
+      @Param("source") com.moneyreserve.domain.CategorySource source,
+      Pageable pageable);
+
+  /** {@code [sum, count]} of money out no rule matched (FALLBACK), same scope as the ledger. */
+  @Query(
+      """
+      SELECT SUM(t.amount), COUNT(t)
+      FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.txnDate BETWEEN :from AND :to
+        AND t.deletedAt IS NULL
+        AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
+        AND t.categorySource = com.moneyreserve.domain.CategorySource.FALLBACK
+        AND (:accountId IS NULL OR t.accountId = :accountId)
+      """)
+  List<Object[]> sumUncategorised(
+      @Param("userId") UUID userId,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to,
+      @Param("accountId") UUID accountId);
+
+  /** Rows stored before V1.17.0 whose category reason is still unknown, oldest first. */
+  @Query(
+      """
+      SELECT t FROM BiTransaction t
+      WHERE t.categorySource IS NULL
+      ORDER BY t.createdAt ASC, t.id ASC
+      """)
+  List<BiTransaction> findWithoutCategorySource(Pageable pageable);
+
+  /** {@code [direction, sum, count]} for the same scope as {@link #pageLedger}, both directions. */
+  @Query(
+      """
+      SELECT t.direction, SUM(t.amount), COUNT(t)
+      FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.txnDate BETWEEN :from AND :to
+        AND t.deletedAt IS NULL
+        AND (:accountId IS NULL OR t.accountId = :accountId)
+      GROUP BY t.direction
+      """)
+  List<Object[]> sumLedgerByDirection(
+      @Param("userId") UUID userId,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to,
+      @Param("accountId") UUID accountId);
+
   /**
    * Customers with any ledger activity since a date, for the aggregate refresh (BI-29).
    *

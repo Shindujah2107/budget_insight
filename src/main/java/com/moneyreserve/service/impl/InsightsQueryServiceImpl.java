@@ -5,9 +5,11 @@ import com.moneyreserve.domain.BiAccount;
 import com.moneyreserve.domain.BiCategory;
 import com.moneyreserve.domain.InstrumentType;
 import com.moneyreserve.domain.BiTransaction;
+import com.moneyreserve.domain.TxnDirection;
 import com.moneyreserve.dto.AccountDto;
 import com.moneyreserve.dto.CategoryDto;
 import com.moneyreserve.dto.CategoryTransactionsResponse;
+import com.moneyreserve.dto.LedgerPageResponse;
 import com.moneyreserve.dto.PaymentActivityResponse;
 import com.moneyreserve.dto.PeriodDto;
 import com.moneyreserve.dto.SpendingBreakdownResponse;
@@ -212,6 +214,101 @@ public class InsightsQueryServiceImpl implements InsightsQueryService {
   }
 
   // ---------------------------------------------------------------------------------
+  // The ledger list (both directions)
+  // ---------------------------------------------------------------------------------
+
+  @Override
+  @Transactional(readOnly = true)
+  public LedgerPageResponse ledger(
+      UUID userId,
+      LocalDate from,
+      LocalDate to,
+      TxnDirection direction,
+      UUID accountId,
+      boolean uncategorised,
+      int page,
+      int size) {
+
+    InsightsPeriod period = period(from, to);
+    int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+    int safePage = Math.max(page, 0);
+
+    Page<BiTransaction> found =
+        transactions.pageLedger(
+            userId,
+            period.start(),
+            period.end(),
+            direction,
+            accountId,
+            uncategorised ? com.moneyreserve.domain.CategorySource.FALLBACK : null,
+            PageRequest.of(safePage, safeSize));
+
+    BigDecimal out = BigDecimal.ZERO;
+    BigDecimal in = BigDecimal.ZERO;
+    long outCount = 0;
+    long inCount = 0;
+    for (Object[] row :
+        transactions.sumLedgerByDirection(userId, period.start(), period.end(), accountId)) {
+      BigDecimal sum = row[1] == null ? BigDecimal.ZERO : (BigDecimal) row[1];
+      long count = row[2] == null ? 0L : ((Number) row[2]).longValue();
+      if (row[0] == TxnDirection.CREDIT) {
+        in = sum;
+        inCount = count;
+      } else {
+        out = sum;
+        outCount = count;
+      }
+    }
+
+    BigDecimal unsorted = BigDecimal.ZERO;
+    long unsortedCount = 0;
+    for (Object[] row :
+        transactions.sumUncategorised(userId, period.start(), period.end(), accountId)) {
+      unsorted = row[0] == null ? BigDecimal.ZERO : (BigDecimal) row[0];
+      unsortedCount = row[1] == null ? 0L : ((Number) row[1]).longValue();
+    }
+
+    Map<UUID, BiAccount> accountsOnPage = loadAccounts(userId, found.getContent());
+    List<TransactionDto> items =
+        found.getContent().stream()
+            .map(t -> mapper.toDto(t, accountsOnPage.get(t.getAccountId())))
+            .collect(Collectors.toList());
+    log.info(
+        "Insights ledger userId={} period={} direction={} account={} page={} returned={} total={}",
+        userId,
+        period,
+        direction,
+        accountId != null,
+        safePage,
+        items.size(),
+        found.getTotalElements());
+
+    return LedgerPageResponse.builder()
+        .range(period.toDto())
+        .currency(properties.getCurrency())
+        .direction(direction == null ? null : direction.name())
+        .totals(
+            LedgerPageResponse.Totals.builder()
+                .moneyOut(mapper.money(out))
+                .moneyOutCount(outCount)
+                .moneyIn(mapper.money(in))
+                .moneyInCount(inCount)
+                .incomeCoverage("RECORDED")
+                .uncategorised(mapper.money(unsorted))
+                .uncategorisedCount(unsortedCount)
+                .build())
+        .page(
+            CategoryTransactionsResponse.PageDto.builder()
+                .number(found.getNumber())
+                .size(found.getSize())
+                .totalElements(found.getTotalElements())
+                .totalPages(found.getTotalPages())
+                .build())
+        .transactions(items)
+        .build();
+  }
+
+  // ---------------------------------------------------------------------------------
   // Reference lists
   // ---------------------------------------------------------------------------------
 
@@ -360,8 +457,17 @@ public class InsightsQueryServiceImpl implements InsightsQueryService {
   @Override
   @Transactional(readOnly = true)
   public List<CategoryDto> categories() {
+    return categories(false);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<CategoryDto> categories(boolean includeInactive) {
     List<CategoryDto> out =
-        categories.findAllByIsActiveTrueOrderBySortOrderAsc().stream()
+        (includeInactive
+                ? categories.findAllByOrderBySortOrderAsc()
+                : categories.findAllByIsActiveTrueOrderBySortOrderAsc())
+            .stream()
             .map(mapper::toDto)
             .collect(Collectors.toList());
     log.info("Insights categories listed count={}", out.size());

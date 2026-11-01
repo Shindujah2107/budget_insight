@@ -48,8 +48,9 @@ public class BiCategory {
   private String iconKey;
 
   /**
-   * Unused in v1. The final design draws every share bar in a single accent colour; kept so a
-   * future design can reintroduce per-category colour without a migration.
+   * Display colour ({@code #RRGGBB}) sent to the app with the category. Seeded with the app's
+   * palette by V1.18.0 and edited in the Admin Dashboard; the app falls back to its own colour
+   * when this is empty.
    */
   @Column(name = "colour_hex", length = 9)
   private String colourHex;

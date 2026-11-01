@@ -25,4 +25,24 @@ public class CategoryDto {
   private String name;
   private String iconKey;
   private Integer sortOrder;
+
+  /**
+   * Display colour as {@code #RRGGBB}, set in the Admin Dashboard (seeded with the app's palette by
+   * V1.18.0). Omitted when unset; the app then uses its own colour for the code.
+   */
+  private String colourHex;
+
+  /** Sinhala and Tamil names when the Admin Dashboard has them; the app falls back to {@code name}. */
+  private String nameSi;
+
+  private String nameTa;
+
+  /**
+   * False for a category turned off in the Admin Dashboard. Only listed with {@code
+   * includeInactive=true}, so the app can still name it on older transactions.
+   */
+  private Boolean active;
+
+  /** 50/30/20 bucket: NEEDS, WANTS or SAVINGS; absent when not counted. */
+  private String spendBucket;
 }

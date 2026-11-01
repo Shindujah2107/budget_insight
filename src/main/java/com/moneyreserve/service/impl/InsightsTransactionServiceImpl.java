@@ -5,6 +5,7 @@ import com.moneyreserve.config.InsightsProperties;
 import com.moneyreserve.domain.AuditAction;
 import com.moneyreserve.domain.BiAccount;
 import com.moneyreserve.domain.BiCategory;
+import com.moneyreserve.domain.CategorySource;
 import com.moneyreserve.domain.BiTransaction;
 import com.moneyreserve.domain.BiTransactionAudit;
 import com.moneyreserve.domain.TxnDirection;
@@ -29,6 +30,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.util.Locale;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -90,9 +92,11 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     }
 
     // What the engine would have said, kept whether or not the customer overrode it.
-    BiCategory auto =
-        categorisation.categorise(
+    CategorisationService.Decision decision =
+        categorisation.decide(
+            userId,
             new CategorisationInput(request.getMerchant(), null, direction(request.getDirection())));
+    BiCategory auto = decision.category();
     boolean chosen = request.getCategoryId() != null;
     BiCategory category = chosen ? queries.requireCategory(request.getCategoryId()) : auto;
 
@@ -115,6 +119,7 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
             .categoryId(category.getId())
             .autoCategoryId(auto.getId())
             .isUserCategorised(chosen)
+            .categorySource(chosen ? CategorySource.USER : decision.source())
             .source(TxnSource.MANUAL)
             .idempotencyKey(idempotencyKey)
             .build();
@@ -136,6 +141,11 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
         chosen);
 
     return respond(userId, saved, from, to, null, false);
+  }
+
+  private static String merchantKey(String merchant) {
+    String key = com.moneyreserve.service.calc.MerchantRuleMatcher.normalise(merchant);
+    return key == null || key.length() <= 128 ? key : key.substring(0, 128);
   }
 
   // ---------------------------------------------------------------------------------
@@ -189,7 +199,25 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
       txn.setCategoryId(category.getId());
       // The latch. From here on the categorisation engine is a spectator on this row.
       txn.setIsUserCategorised(Boolean.TRUE);
+      txn.setCategorySource(CategorySource.USER);
       recategorised = true;
+    }
+    // "Do this for every transaction from this merchant": remember the choice for future alerts and
+    // move this customer's other rows from the same merchant. Never another customer's rows, and
+    // never a global rule.
+    List<BiTransaction> sameMerchant = List.of();
+    if (Boolean.TRUE.equals(request.getApplyToMerchant())
+        && txn.getMerchant() != null
+        && txn.getCategoryId() != null) {
+      String key = categorisation.remember(userId, txn.getMerchant(), txn.getCategoryId());
+      if (key != null) {
+        sameMerchant =
+            transactions.findAllByUserIdAndMerchantIsNotNullAndDeletedAtIsNull(userId).stream()
+                .filter(t -> !t.getId().equals(txn.getId()))
+                .filter(t -> key.equals(merchantKey(t.getMerchant())))
+                .filter(t -> !Objects.equals(t.getCategoryId(), txn.getCategoryId()))
+                .toList();
+      }
     }
 
     if (request.getAmount() != null) {
@@ -211,6 +239,27 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
 
     if (recategorised) {
       audit(saved, AuditAction.RECATEGORISE, previousCategoryId, saved.getCategoryId(), userId);
+    }
+    java.util.Set<LocalDate> touched = new java.util.HashSet<>();
+    for (BiTransaction other : sameMerchant) {
+      UUID before = other.getCategoryId();
+      other.setCategoryId(saved.getCategoryId());
+      other.setIsUserCategorised(Boolean.TRUE);
+      other.setCategorySource(CategorySource.USER);
+      transactions.save(other);
+      audit(other, AuditAction.RECATEGORISE, before, other.getCategoryId(), userId);
+      touched.add(other.getTxnDate().withDayOfMonth(1));
+    }
+    for (LocalDate month : touched) {
+      invalidate(userId, month);
+      budgetAlerts.evaluate(caller, month);
+    }
+    if (!sameMerchant.isEmpty()) {
+      log.info(
+          "Insights merchant choice applied txnId={} userId={} otherRows={}",
+          saved.getId(),
+          userId,
+          sameMerchant.size());
     }
     if (fieldEdit) {
       audit(saved, AuditAction.EDIT, previousCategoryId, previousCategoryId, userId);

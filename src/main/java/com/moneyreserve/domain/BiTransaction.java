@@ -93,6 +93,11 @@ public class BiTransaction {
   @Column(name = "is_user_categorised", nullable = false)
   private Boolean isUserCategorised;
 
+  /** Why the row has its category (V1.17.0). See {@link CategorySource}. */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "category_source", length = 16)
+  private CategorySource categorySource;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "source", nullable = false, length = 16)
   private TxnSource source;

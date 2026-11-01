@@ -24,9 +24,9 @@ public record AdminCategoryInput(
     @NotBlank
         @Pattern(regexp = "^ic_[a-z0-9_]{1,45}$", message = "iconKey must look like ic_shopping")
         String iconKey,
-    @Pattern(
-            regexp = "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$",
-            message = "colourHex must be #RRGGBB or #RRGGBBAA")
+    // Opaque only: the app draws charts and icon circles with it, where transparency would change
+    // the colour against each background.
+    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "colourHex must be #RRGGBB")
         String colourHex,
     @NotNull @Min(0) @Max(999) Integer sortOrder,
     @NotNull Boolean active,

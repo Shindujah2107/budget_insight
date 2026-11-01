@@ -540,8 +540,11 @@ class IngestServiceImplTest {
 
   private void stubHappyPath() {
     stubNoExistingTransactions();
-    when(categorisation.categorise(any(CategorisationInput.class)))
-        .thenReturn(BiCategory.builder().id(GROCERIES).code("GROCERIES").build());
+    when(categorisation.decide(any(), any(CategorisationInput.class)))
+        .thenReturn(
+            new CategorisationService.Decision(
+                BiCategory.builder().id(GROCERIES).code("GROCERIES").build(),
+                com.moneyreserve.domain.CategorySource.RULE));
     when(transactions.save(any(BiTransaction.class)))
         .thenAnswer(
             invocation -> {

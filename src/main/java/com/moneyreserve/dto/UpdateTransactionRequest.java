@@ -35,6 +35,11 @@ public class UpdateTransactionRequest {
 
   /** The customer's chosen category. Allowed on any transaction. */
   private UUID categoryId;
+  /**
+   * With {@code categoryId}: also use this category for every other transaction of the customer's
+   * from the same merchant, and for their future bank alerts from it. Personal; never a global rule.
+   */
+  private Boolean applyToMerchant;
 
   /** Manual transactions only. */
   @DecimalMin(value = "0.01", message = "Please enter an amount greater than zero.")

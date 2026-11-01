@@ -407,9 +407,11 @@ public class IngestServiceImpl implements IngestService {
 
       // ---- Step 6. Categorisation. Both columns, always: auto_category_id is what the merchant
       // map is judged on later, and it has to survive the customer correcting the row.
-      BiCategory category =
-          categorisation.categorise(
+      CategorisationService.Decision decision =
+          categorisation.decide(
+              userId,
               new CategorisationInput(message.merchant(), message.messageType(), message.direction()));
+      BiCategory category = decision.category();
 
       // A template id the device made up, or one from a template that has since been retired,
       // would violate fk_bi_txn_template at flush -- which is a DataIntegrityViolationException,
@@ -436,6 +438,7 @@ public class IngestServiceImpl implements IngestService {
                   .categoryId(category.getId())
                   .autoCategoryId(category.getId())
                   .isUserCategorised(Boolean.FALSE)
+                  .categorySource(decision.source())
                   .source(source)
                   .parserTemplateId(templateId)
                   .idempotencyKey(message.storedKey())

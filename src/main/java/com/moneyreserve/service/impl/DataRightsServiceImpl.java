@@ -103,6 +103,8 @@ public class DataRightsServiceImpl implements DataRightsService {
           // Erased but never exported: an export of the customer's previous exports would nest
           // their whole history inside itself, once per request they ever made.
           new CustomerTable("dataExports", "BiDataExport", BY_USER, false),
+          // The customer's own "always use this category for this merchant" choices (V1.17.0).
+          new CustomerTable("merchantChoices", "BiUserMerchantCategory", BY_USER, true),
           // Parents last.
           new CustomerTable("transactions", "BiTransaction", BY_USER, true),
           new CustomerTable("accounts", "BiAccount", BY_USER, true),

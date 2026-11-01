@@ -2,6 +2,7 @@ package com.moneyreserve.service.impl;
 
 import com.moneyreserve.config.InsightsProperties;
 import com.moneyreserve.domain.BiCategory;
+import com.moneyreserve.domain.CategorySource;
 import com.moneyreserve.domain.BiMerchantCategoryMap;
 import com.moneyreserve.repository.BiCategoryRepository;
 import com.moneyreserve.repository.BiMerchantCategoryMapRepository;
@@ -53,21 +54,71 @@ public class CategorisationServiceImpl implements CategorisationService {
    */
   private final MerchantRuleMatcher matcher = new MerchantRuleMatcher();
 
+  /**
+   * Customers' own merchant choices. Optional so the rule engine can be built on its own in tests;
+   * without it there are simply no personal choices.
+   */
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private com.moneyreserve.repository.BiUserMerchantCategoryRepository userChoices;
+
   @Override
   @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-  public BiCategory categorise(CategorisationInput input) {
+  public Decision decide(UUID userId, CategorisationInput input) {
+    String key = input == null ? null : MerchantRuleMatcher.normalise(input.merchant());
+    if (userChoices != null && userId != null && key != null) {
+      Optional<BiCategory> chosen =
+          userChoices
+              .findByUserIdAndMerchantKey(userId, key)
+              .flatMap(c -> categories.findById(c.getCategoryId()))
+              .filter(c -> Boolean.TRUE.equals(c.getIsActive()));
+      if (chosen.isPresent()) {
+        return new Decision(chosen.get(), CategorySource.USER);
+      }
+    }
+    return decide(input);
+  }
+
+  @Override
+  @Transactional
+  public String remember(UUID userId, String merchant, UUID categoryId) {
+    String key = MerchantRuleMatcher.normalise(merchant);
+    if (userChoices == null || userId == null || key == null) {
+      return null;
+    }
+    String stored = key.length() > 128 ? key.substring(0, 128) : key;
+    java.time.OffsetDateTime now = java.time.OffsetDateTime.now();
+    com.moneyreserve.domain.BiUserMerchantCategory choice =
+        userChoices
+            .findByUserIdAndMerchantKey(userId, stored)
+            .orElseGet(
+                () ->
+                    com.moneyreserve.domain.BiUserMerchantCategory.builder()
+                        .id(UUID.randomUUID())
+                        .userId(userId)
+                        .merchantKey(stored)
+                        .createdAt(now)
+                        .build());
+    choice.setCategoryId(categoryId);
+    choice.setUpdatedAt(now);
+    userChoices.save(choice);
+    return stored;
+  }
+
+  @Override
+  @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+  public Decision decide(CategorisationInput input) {
     if (input == null) {
-      return fallback();
+      return new Decision(fallback(), CategorySource.FALLBACK);
     }
 
     // ---- L0: decided by message type alone.
     Optional<BiCategory> byType = byMessageType(input.messageType());
     if (byType.isPresent()) {
-      return byType.get();
+      return new Decision(byType.get(), CategorySource.RULE);
     }
 
     if (MerchantRuleMatcher.normalise(input.merchant()) == null) {
-      return fallback();
+      return new Decision(fallback(), CategorySource.FALLBACK);
     }
 
     // ---- L1–L4: every active rule tried, best match first.
@@ -85,7 +136,7 @@ public class CategorisationServiceImpl implements CategorisationService {
       BiMerchantCategoryMap rule = match.rule();
       Optional<BiCategory> hit = categories.findById(rule.getCategoryId());
       if (hit.isPresent() && Boolean.TRUE.equals(hit.get().getIsActive())) {
-        return hit.get();
+        return new Decision(hit.get(), CategorySource.RULE);
       }
       // A rule pointing at a retired category is a data defect in reference data we control,
       // so it is an error even though the request itself still succeeds on the next rule.
@@ -94,7 +145,7 @@ public class CategorisationServiceImpl implements CategorisationService {
     // ---- L5. Deliberately not logged. This runs once per ingested message, so a line here would be
     // the highest-volume statement in the service; the admin's uncategorised-merchant report
     // aggregates these instead.
-    return fallback();
+    return new Decision(fallback(), CategorySource.FALLBACK);
   }
 
   @Override

@@ -125,9 +125,10 @@ class FormatDiscoveryIT {
     assertEquals(5, rows.get(0).getMsgCount());
     assertTrue(stats.findAll().stream().noneMatch(r -> r.getSenderId().startsWith("077")));
 
-    // A sender not on the allowlist is hidden until 5 devices have seen it.
+    // A sender not on the allowlist is listed from its first report (min-distinct-users defaults to
+    // 1, so an admin can review every new sender), and its counts keep adding up across devices.
+    assertTrue(coverageHas(sender), "an unknown sender is listed from its first device");
     post(STATS, user, statsBody("dev2-" + sender, stat(sender, yesterday, 2)));
-    assertFalse(coverageHas(sender), "an unknown sender seen by 2 devices must not be listed");
     for (int d = 3; d <= 5; d++) {
       post(STATS, user, statsBody("dev" + d + "-" + sender, stat(sender, yesterday, 1)));
     }

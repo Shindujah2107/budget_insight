@@ -34,4 +34,9 @@ public class TransactionDto {
   private String source;
   private Boolean editable;
   private Boolean isUserCategorised;
+  /**
+   * Why the row has its category: RULE, USER or FALLBACK (nothing matched; filed under Other and
+   * shown as needing a category). Absent on rows not yet backfilled.
+   */
+  private String categorySource;
 }
