@@ -252,6 +252,9 @@ public class BillServiceImpl implements BillService {
       b.setUpdatedAt(now);
       b = bills.save(b);
       existing.put(b.getPayeeKey(), b);
+      if (newPayment) {
+        withdrawCoveredMissed(b);
+      }
       if (newPayment && jumped(f, config) && premiumFeature() && recent(f.lastPaidOn(), today)) {
         raise(b, f.lastPaidOn(), BudgetAlertType.BILL_JUMPED, f.lastAmount(), f.previousAverage());
       }
@@ -390,6 +393,23 @@ public class BillServiceImpl implements BillService {
             .raisedAt(OffsetDateTime.now())
             .build());
     log.info("Insights bill alert raised userId={} billId={} type={} on={}", b.getUserId(), b.getId(), type, on);
+  }
+
+  /**
+   * A "missed?" the customer has not seen yet is withdrawn once a payment turns up for that due
+   * date (paid late, or payments that arrived out of date order): it was not missed after all.
+   */
+  private void withdrawCoveredMissed(BiUserBill b) {
+    if (b.getLastPaidOn() == null) {
+      return;
+    }
+    for (BiBudgetAlert alert : alerts.findAllByBillIdAndAlertType(b.getId(), BudgetAlertType.BILL_MISSED)) {
+      boolean covered = !b.getLastPaidOn().isBefore(alert.getPeriodStart().minusDays(7));
+      if (covered && !alert.isAcknowledged()) {
+        alerts.delete(alert);
+        log.info("Insights bill alert withdrawn billId={} due={}: the payment came", b.getId(), alert.getPeriodStart());
+      }
+    }
   }
 
   private static boolean jumped(Found f, InsightsProperties.Bills config) {

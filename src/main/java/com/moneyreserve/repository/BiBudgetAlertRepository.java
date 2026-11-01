@@ -31,6 +31,8 @@ public interface BiBudgetAlertRepository extends JpaRepository<BiBudgetAlert, UU
   boolean existsByBillIdAndPeriodStartAndAlertType(
       UUID billId, LocalDate periodStart, BudgetAlertType alertType);
 
+  List<BiBudgetAlert> findAllByBillIdAndAlertType(UUID billId, BudgetAlertType alertType);
+
   /** Bill alerts raised in a window, for the alerts list (their period_start is a due date). */
   List<BiBudgetAlert> findAllByUserIdAndBillIdIsNotNullAndRaisedAtBetweenOrderByRaisedAtDesc(
       UUID userId, java.time.OffsetDateTime from, java.time.OffsetDateTime to);

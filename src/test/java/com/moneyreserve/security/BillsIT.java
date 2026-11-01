@@ -252,4 +252,21 @@ class BillsIT {
     assertTrue(named, "the alerts list names the bill: " + listed.getBody());
     assertFalse(alertTypes(water).contains(BudgetAlertType.BILL_MISSED));
   }
+
+  @Test
+  @DisplayName("a 'missed?' not yet seen is withdrawn when the payment turns up")
+  void missedWithdrawn() throws Exception {
+    UUID user = UUID.randomUUID();
+    for (int back : new int[] {100, 70, 40}) {
+      pay(user, "Hill Club", "2000.00", today.minusDays(back));
+    }
+    pay(user, "Keells Super", "4200.00", today);
+    String club = named(list(user), "Hill Club").path("id").asText();
+    assertTrue(alertTypes(club).contains(BudgetAlertType.BILL_MISSED));
+
+    pay(user, "Hill Club", "2000.00", today.minusDays(9)); // paid late, recorded now
+    JsonNode after = named(list(user), "Hill Club");
+    assertTrue(after.path("daysUntilDue").asLong() > 0, after.toString());
+    assertFalse(alertTypes(club).contains(BudgetAlertType.BILL_MISSED), alertTypes(club).toString());
+  }
 }
