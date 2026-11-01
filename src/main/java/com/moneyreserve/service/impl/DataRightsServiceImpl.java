@@ -94,6 +94,8 @@ public class DataRightsServiceImpl implements DataRightsService {
               "x.budgetId IN (SELECT b.id FROM BiBudget b WHERE b.userId = :userId)",
               true),
           new CustomerTable("budgetAlerts", "BiBudgetAlert", BY_USER, true),
+          // Bills radar (V1.19.0): the customer's bills, after the alerts that point at them.
+          new CustomerTable("bills", "BiUserBill", BY_USER, true),
           // Derived and reconstructible from the rows below it. Erased so nothing survives, not
           // exported because handing someone a cache of their own figures is noise, not data.
           new CustomerTable("insightCache", "BiInsightCache", BY_USER, false),

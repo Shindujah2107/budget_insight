@@ -74,19 +74,12 @@ public final class BillDetector {
       if (p.date() == null || p.amount() == null || p.amount().signum() <= 0) {
         continue;
       }
-      List<String> tokens = MerchantText.tokens(p.merchant());
-      Optional<KnownBiller> biller = matchBiller(tokens, billers);
-      String key;
-      if (biller.isPresent()) {
-        key = "B:" + biller.get().code();
-      } else {
-        String merchant = MerchantRuleMatcher.normalise(p.merchant());
-        if (merchant == null || p.transfer()) {
-          continue;
-        }
-        key = clip("M:" + merchant);
+      Optional<KnownBiller> biller = matchBiller(MerchantText.tokens(p.merchant()), billers);
+      Optional<String> key = payeeKey(p, biller);
+      if (key.isEmpty()) {
+        continue;
       }
-      Group g = groups.computeIfAbsent(key, k -> new Group(biller.orElse(null)));
+      Group g = groups.computeIfAbsent(key.get(), k -> new Group(biller.orElse(null)));
       (p.moneyIn() ? g.refunds : g.paid).add(p);
     }
     List<Found> out = new ArrayList<>();
@@ -95,6 +88,22 @@ public final class BillDetector {
     }
     out.sort(Comparator.comparing(Found::nextDueOn).thenComparing(Found::payeeKey));
     return out;
+  }
+
+  /** The payee a payment belongs to, or empty when it is not grouped (a plain transfer). */
+  public static Optional<String> payeeKey(Payment p, List<KnownBiller> billers) {
+    return payeeKey(p, matchBiller(MerchantText.tokens(p.merchant()), billers));
+  }
+
+  private static Optional<String> payeeKey(Payment p, Optional<KnownBiller> biller) {
+    if (biller.isPresent()) {
+      return Optional.of("B:" + biller.get().code());
+    }
+    String merchant = MerchantRuleMatcher.normalise(p.merchant());
+    if (merchant == null || p.transfer()) {
+      return Optional.empty();
+    }
+    return Optional.of(clip("M:" + merchant));
   }
 
   public static Optional<KnownBiller> matchBiller(List<String> tokens, List<KnownBiller> billers) {
@@ -229,7 +238,7 @@ public final class BillDetector {
   }
 
   /** The first date on the anchor day that is one period after the last payment. */
-  static LocalDate nextDue(LocalDate last, BillCadence cadence, Integer anchor) {
+  public static LocalDate nextDue(LocalDate last, BillCadence cadence, Integer anchor) {
     if (cadence == BillCadence.WEEKLY || anchor == null) {
       return last.plusDays(cadence == BillCadence.WEEKLY ? 7 : (cadence.minDays() + cadence.maxDays()) / 2);
     }

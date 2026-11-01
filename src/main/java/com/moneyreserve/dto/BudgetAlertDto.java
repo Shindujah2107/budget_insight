@@ -48,4 +48,9 @@ public class BudgetAlertDto {
 
   /** Present once the customer has dismissed it. Never cleared. */
   private OffsetDateTime acknowledgedAt;
+
+  /** On a BILL_* alert: the bill, its name and due date (period_start holds the due date). */
+  private UUID billId;
+
+  private String billName;
 }

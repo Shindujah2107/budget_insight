@@ -105,7 +105,8 @@ class DataRightsIT {
           new Owned("BiInsightCache", BY_USER),
           new Owned("BiDeviceSyncState", BY_USER),
           new Owned("BiDataExport", BY_USER),
-          new Owned("BiUserMerchantCategory", BY_USER));
+          new Owned("BiUserMerchantCategory", BY_USER),
+          new Owned("BiUserBill", BY_USER));
 
   /**
    * Shared across every customer. Nothing in them is anyone's to export or erase.
@@ -132,7 +133,9 @@ class DataRightsIT {
           // SMS format discovery's word list: shared configuration, no customer data.
           "BiSmsVocabularyWord",
           // The message type list SMS templates pick from (V1.15.0): configuration, no customer data.
-          "BiMessageType");
+          "BiMessageType",
+          // Known billers for the bills radar (V1.19.0): configuration, no customer data.
+          "BiBiller");
 
   /**
    * Not customer-scoped at all.
@@ -175,6 +178,8 @@ class DataRightsIT {
   @Autowired private BiInsightCacheRepository caches;
   @Autowired private BiDeviceSyncStateRepository syncStates;
   @Autowired private com.moneyreserve.repository.BiUserMerchantCategoryRepository merchantChoices;
+  @Autowired private com.moneyreserve.repository.BiUserBillRepository userBills;
+  @Autowired private com.moneyreserve.repository.BiBudgetAlertRepository billAlerts;
 
   private final UUID alice = UUID.randomUUID();
   private final UUID bob = UUID.randomUUID();
@@ -368,6 +373,7 @@ class DataRightsIT {
       case "BiRawMessage" -> "rawMessages";
       case "BiDeviceSyncState" -> "deviceSyncState";
       case "BiUserMerchantCategory" -> "merchantChoices";
+      case "BiUserBill" -> "bills";
       default -> null;
     };
   }
@@ -580,6 +586,32 @@ class DataRightsIT {
                 .orElseThrow()
                 .getCategoryId())
             .createdAt(now)
+            .build());
+
+    com.moneyreserve.domain.BiUserBill bill =
+        userBills.save(
+            com.moneyreserve.domain.BiUserBill.builder()
+                .id(UUID.randomUUID())
+                .userId(user)
+                .payeeKey("M:FIXTURE BILL " + user)
+                .detectedName("Fixture bill")
+                .status(com.moneyreserve.domain.BillStatus.DETECTED)
+                .cadence(com.moneyreserve.domain.BillCadence.MONTHLY)
+                .expectedAmount(new java.math.BigDecimal("1500.00"))
+                .nextDueOn(java.time.LocalDate.now().plusDays(2))
+                .remindDaysBefore((short) 3)
+                .paymentCount((short) 3)
+                .createdAt(now)
+                .build());
+    // A bill alert points at the bill: erasure must remove it first.
+    billAlerts.save(
+        com.moneyreserve.domain.BiBudgetAlert.builder()
+            .userId(user)
+            .billId(bill.getId())
+            .periodStart(bill.getNextDueOn())
+            .alertType(com.moneyreserve.domain.BudgetAlertType.BILL_DUE)
+            .amountAtRaise(new java.math.BigDecimal("1500.00"))
+            .limitAtRaise(new java.math.BigDecimal("1500.00"))
             .build());
   }
 }

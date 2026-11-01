@@ -49,6 +49,10 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
   private final InsightsQueryService queries;
   private final CategorisationService categorisation;
   private final BudgetAlertService budgetAlerts;
+
+  /** Bills radar: re-checked once a payment commits. Optional so focused tests need not wire it. */
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private com.moneyreserve.service.BillService bills;
   private final BiTransactionRepository transactions;
   private final BiTransactionAuditRepository audits;
   private final BiAccountRepository accounts;
@@ -129,6 +133,9 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     invalidate(userId, txnDate);
     // In this transaction, so the evaluation sees the row just written (BI-25).
     budgetAlerts.evaluate(caller, txnDate);
+    if (bills != null) {
+      bills.refreshAfterCommit(userId);
+    }
 
     // Ids, codes and counts only. No amount, merchant or note reaches the log: the whole point of
     // the schema's shape is that this feature's personal financial detail lives in one place, and
@@ -281,6 +288,9 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     // cannot raise anything, but evaluating it is cheap and a month that still has a crossing in
     // it should not go unreported because the trigger moved away.
     budgetAlerts.evaluate(caller, saved.getTxnDate());
+    if (bills != null) {
+      bills.refreshAfterCommit(caller.userId());
+    }
     if (previousDate != null
         && !YearMonth.from(previousDate).equals(YearMonth.from(saved.getTxnDate()))) {
       budgetAlerts.evaluate(caller, previousDate);
@@ -335,6 +345,10 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     // No alert evaluation here. A soft delete only ever reduces spend, so it cannot cross a
     // threshold, and an alert already raised stays raised: it records that the customer was told
     // something true at the time, and deleting the transaction does not un-tell them.
+    // Bills do change: a deleted payment can end or shift a recurring bill.
+    if (bills != null) {
+      bills.refreshAfterCommit(userId);
+    }
 
     log.info(
         "Insights transaction soft deleted txnId={} userId={} source={}",

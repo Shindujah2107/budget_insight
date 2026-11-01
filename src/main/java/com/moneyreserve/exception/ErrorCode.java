@@ -59,6 +59,13 @@ public enum ErrorCode {
   INSIGHTS_ACCOUNT_NOT_FOUND(
       "MR.TXN.E.003", HttpStatus.NOT_FOUND, "We couldn't find that account."),
 
+  // Bills
+  INSIGHTS_BILL_NOT_FOUND("MR.BIL.E.001", HttpStatus.NOT_FOUND, "We couldn't find that bill."),
+  INSIGHTS_BILL_INVALID(
+      "MR.BIL.E.002", HttpStatus.BAD_REQUEST, "Please check the bill's name, amount and date."),
+  INSIGHTS_BILL_PREMIUM(
+      "MR.BIL.E.003", HttpStatus.FORBIDDEN, "This bill feature is part of MoneyReserve Premium."),
+
   // Categories
   INSIGHTS_CATEGORY_INVALID(
       "MR.CAT.E.001", HttpStatus.BAD_REQUEST, "Please choose a category from the list."),

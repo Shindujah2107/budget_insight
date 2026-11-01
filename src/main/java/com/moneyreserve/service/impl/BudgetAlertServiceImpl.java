@@ -76,6 +76,10 @@ public class BudgetAlertServiceImpl implements BudgetAlertService {
   private final BiTransactionRepository transactions;
   private final BiCategoryRepository categories;
 
+  /** Bills radar's alerts share this list. Optional so focused tests need not wire it. */
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private com.moneyreserve.repository.BiUserBillRepository bills;
+
   // ---------------------------------------------------------------------------------
   // Raise
   // ---------------------------------------------------------------------------------
@@ -215,8 +219,37 @@ public class BudgetAlertServiceImpl implements BudgetAlertService {
     LocalDate anchor = onDate != null ? onDate : LocalDate.now(properties.zoneId());
     LocalDate periodStart = InsightsPeriod.ofMonth(YearMonth.from(anchor)).start();
 
-    List<BiBudgetAlert> raised =
-        alerts.findAllByUserIdAndPeriodStartOrderByRaisedAtDesc(userId, periodStart);
+    List<BiBudgetAlert> raised = new ArrayList<>();
+    for (BiBudgetAlert row :
+        alerts.findAllByUserIdAndPeriodStartOrderByRaisedAtDesc(userId, periodStart)) {
+      if (row.getBillId() == null) {
+        raised.add(row);
+      }
+    }
+    // Bill alerts by when they were raised: this month, and its last week before it, so a
+    // "missed?" about a bill due late last month still shows at the start of this one.
+    Map<UUID, String> billNames = new HashMap<>();
+    if (bills != null) {
+      LocalDate periodEnd = InsightsPeriod.ofMonth(YearMonth.from(anchor)).end();
+      List<BiBudgetAlert> billAlerts =
+          alerts.findAllByUserIdAndBillIdIsNotNullAndRaisedAtBetweenOrderByRaisedAtDesc(
+              userId,
+              periodStart.minusDays(7).atStartOfDay(properties.zoneId()).toOffsetDateTime(),
+              periodEnd.plusDays(1).atStartOfDay(properties.zoneId()).toOffsetDateTime());
+      if (!billAlerts.isEmpty()) {
+        Set<UUID> ids = new HashSet<>();
+        for (BiBudgetAlert row : billAlerts) {
+          ids.add(row.getBillId());
+        }
+        for (com.moneyreserve.domain.BiUserBill bill : bills.findAllById(ids)) {
+          if (bill.getUserId().equals(userId)) {
+            billNames.put(bill.getId(), bill.displayName());
+          }
+        }
+        raised.addAll(billAlerts);
+        raised.sort(java.util.Comparator.comparing(BiBudgetAlert::getRaisedAt).reversed());
+      }
+    }
     log.info(
         "Insights alerts read userId={} period={} count={}", userId, periodStart, raised.size());
     if (raised.isEmpty()) {
@@ -238,7 +271,12 @@ public class BudgetAlertServiceImpl implements BudgetAlertService {
 
     List<BudgetAlertDto> out = new ArrayList<>(raised.size());
     for (BiBudgetAlert row : raised) {
-      out.add(toDto(row, byId.get(row.getCategoryId())));
+      BudgetAlertDto dto = toDto(row, byId.get(row.getCategoryId()));
+      if (row.getBillId() != null) {
+        dto.setBillId(row.getBillId());
+        dto.setBillName(billNames.get(row.getBillId()));
+      }
+      out.add(dto);
     }
     return out;
   }

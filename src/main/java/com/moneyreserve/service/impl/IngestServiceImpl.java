@@ -83,6 +83,10 @@ public class IngestServiceImpl implements IngestService {
   private final InsightsComplianceService compliance;
   private final CategorisationService categorisation;
   private final BudgetAlertService budgetAlerts;
+
+  /** Bills radar: re-checked once a payment commits. Optional so focused tests need not wire it. */
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private com.moneyreserve.service.BillService bills;
   private final IngestRateLimiter rateLimiter;
   private final BiTransactionRepository transactions;
   private final BiAccountRepository accounts;
@@ -489,6 +493,9 @@ public class IngestServiceImpl implements IngestService {
     }
     for (YearMonth month : months) {
       budgetAlerts.evaluate(caller, month.atDay(1));
+    }
+    if (bills != null && !months.isEmpty()) {
+      bills.refreshAfterCommit(caller.userId());
     }
     return outcome;
   }

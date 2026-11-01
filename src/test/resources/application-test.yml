@@ -61,6 +61,10 @@ moneyreserve:
       enabled: true
     alerts:
       enabled: true
+    # Bills radar: recurring bills from stored payments (V1.19.0). Free for now (premium-gate off).
+    bills:
+      enabled: true
+      premium-gate: false
     recommendations:
       enabled: true
       needs-pct: 50

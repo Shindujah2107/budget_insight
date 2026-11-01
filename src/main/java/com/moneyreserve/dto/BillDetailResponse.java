@@ -1,0 +1,29 @@
+package com.moneyreserve.dto;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.LocalDate;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/** One bill and its payments, newest first (up to twelve). */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class BillDetailResponse {
+  private BillDto bill;
+  private List<Paid> payments;
+
+  @Data
+  @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class Paid {
+    private LocalDate date;
+    private String amount;
+  }
+}

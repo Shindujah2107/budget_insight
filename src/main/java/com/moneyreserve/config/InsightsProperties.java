@@ -135,6 +135,8 @@ public class InsightsProperties {
 
   private final Alerts alerts = new Alerts();
 
+  private final Bills bills = new Bills();
+
   private final Recommendations recommendations = new Recommendations();
 
   private final Stub stub = new Stub();
@@ -336,6 +338,31 @@ public class InsightsProperties {
   @Setter
   public static class Alerts {
     private boolean enabled = false;
+  }
+
+  /**
+   * Bills radar: recurring bills found in a customer's own stored payments, with due, jumped and
+   * missed alerts. Reads only transactions already stored, within {@code lookback-months}, so a
+   * yearly bill is found only when that window covers two years; it can always be added by hand.
+   */
+  @Getter
+  @Setter
+  public static class Bills {
+    private boolean enabled = false;
+
+    /**
+     * The Premium boundary. Off: every bill feature is free. On: jump and missed alerts, custom
+     * reminder days and more than {@code free-manual-bills} manual bills need Premium (no customer
+     * has it yet, so turning this on today narrows everyone to the free set).
+     */
+    private boolean premiumGate = false;
+
+    private int freeManualBills = 3;
+    private short defaultRemindDays = 3;
+    /** A payment this much (%) above the average of the three before it raises "bill jumped". */
+    private int jumpPct = 30;
+    /** Days after the due date before "missed?" is raised. */
+    private int missedAfterDays = 5;
   }
 
   /**

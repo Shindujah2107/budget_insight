@@ -697,6 +697,128 @@
       ]
     },
     {
+      "name": "Bills radar",
+      "description": "Recurring bills found in the signed-in customer's own stored payments (known billers by name, other payees by regular gaps and amounts), plus bills added by hand. Owner-scoped. 501 while moneyreserve.insights.bills.enabled is off. Due / jumped / missed alerts appear in GET /api/insights/alerts with billId and billName.",
+      "item": [
+        {
+          "name": "Bills",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills"
+              ]
+            },
+            "description": "Re-detects, then lists the customer's bills (not-a-bill ones left out), with monthlyTotal (every bill as a monthly figure) and premiumGate."
+          }
+        },
+        {
+          "name": "Bill detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}"
+              ]
+            },
+            "description": "One bill and up to 12 of its payments, newest first (none for a bill added by hand). 404 for another customer's bill."
+          }
+        },
+        {
+          "name": "Add a bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills"
+              ]
+            },
+            "description": "Adds a bill by hand. 201 with the bill. cadence: WEEKLY, MONTHLY, QUARTERLY or YEARLY.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"House rent\",\n  \"expectedAmount\": 45000.0,\n  \"cadence\": \"MONTHLY\",\n  \"nextDueOn\": \"2026-12-01\",\n  \"remindDaysBefore\": 3\n}"
+            }
+          }
+        },
+        {
+          "name": "Update a bill",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}"
+              ]
+            },
+            "description": "Absent fields are left alone. name (blank = back to the detected name), confirm, dismiss (not a bill), remindDaysBefore 0-14; expectedAmount, cadence and nextDueOn only for bills added by hand.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Electricity\",\n  \"confirm\": true,\n  \"remindDaysBefore\": 3\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove a bill",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}"
+              ]
+            },
+            "description": "Removes a bill added by hand, or marks a found one not a bill (it is not suggested again). Returns the list."
+          }
+        }
+      ]
+    },
+    {
       "name": "BI-36 — Device-side compliance reporting",
       "item": [
         {
