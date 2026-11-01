@@ -3324,6 +3324,223 @@
             },
             "description": "Replaces every field except code. fixedCategoryCode null = merchant rules decide. Turning a type off only stops new templates from picking it."
           }
+        },
+        {
+          "name": "Billers (bills radar)",
+          "description": "Known billers: payments whose merchant matches a biller's name terms are one bill and show under its name, icon and colour. Drafts; reach the app only through publish. Writes take If-Match: <changesetRevision>.",
+          "item": [
+            {
+              "name": "Billers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/insights/admin/config/billers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "insights",
+                    "admin",
+                    "config",
+                    "billers"
+                  ]
+                },
+                "description": "Effective view (published + drafts) with usage.customers: customers following bills from each."
+              }
+            },
+            {
+              "name": "Draft a biller",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "If-Match",
+                    "value": "{{changesetRevision}}",
+                    "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MR.ADM.E.010."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/insights/admin/config/billers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "insights",
+                    "admin",
+                    "config",
+                    "billers"
+                  ]
+                },
+                "description": "billType: ELECTRICITY, WATER, TELECOM, STREAMING, INSURANCE, LOAN, CARD, RENT or OTHER. terms as merchant rules write them; tolerancePct null = the type's default.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"SUNRISE_GYM\",\n  \"nameEn\": \"Sunrise Gym\",\n  \"nameSi\": null,\n  \"nameTa\": null,\n  \"billType\": \"OTHER\",\n  \"terms\": [\n    \"SUNRISE GYM\"\n  ],\n  \"iconKey\": \"ic_gym\",\n  \"colourHex\": \"#469C79\",\n  \"tolerancePct\": null,\n  \"sortOrder\": 60,\n  \"active\": true\n}"
+                }
+              }
+            },
+            {
+              "name": "Draft a biller edit",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "If-Match",
+                    "value": "{{changesetRevision}}",
+                    "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MR.ADM.E.010."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/insights/admin/config/billers/{{billerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "insights",
+                    "admin",
+                    "config",
+                    "billers",
+                    "{{billerId}}"
+                  ]
+                },
+                "description": "A published code cannot change.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"SUNRISE_GYM\",\n  \"nameEn\": \"Sunrise Gym\",\n  \"nameSi\": null,\n  \"nameTa\": null,\n  \"billType\": \"OTHER\",\n  \"terms\": [\n    \"SUNRISE GYM\"\n  ],\n  \"iconKey\": \"ic_gym\",\n  \"colourHex\": \"#469C79\",\n  \"tolerancePct\": null,\n  \"sortOrder\": 60,\n  \"active\": true\n}"
+                }
+              }
+            },
+            {
+              "name": "Draft turning a biller off",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "If-Match",
+                    "value": "{{changesetRevision}}",
+                    "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MR.ADM.E.010."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/insights/admin/config/billers/{{billerId}}/deactivate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "insights",
+                    "admin",
+                    "config",
+                    "billers",
+                    "{{billerId}}",
+                    "deactivate"
+                  ]
+                },
+                "description": "Bills keyed to it fall back to merchant-name detection."
+              }
+            },
+            {
+              "name": "Draft turning a biller on",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "If-Match",
+                    "value": "{{changesetRevision}}",
+                    "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MR.ADM.E.010."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/insights/admin/config/billers/{{billerId}}/activate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "insights",
+                    "admin",
+                    "config",
+                    "billers",
+                    "{{billerId}}",
+                    "activate"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "Draft deleting a biller",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "If-Match",
+                    "value": "{{changesetRevision}}",
+                    "description": "Required on every configuration write: the changesetRevision the dashboard last saw. Absent, * or a mismatch answers 409 MR.ADM.E.010."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/insights/admin/config/billers/{{billerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "insights",
+                    "admin",
+                    "config",
+                    "billers",
+                    "{{billerId}}"
+                  ]
+                },
+                "description": "Refused while customers' bills come from it."
+              }
+            },
+            {
+              "name": "Recurring payees not in the list",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/insights/admin/config/recurring-payees",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "insights",
+                    "admin",
+                    "config",
+                    "recurring-payees"
+                  ]
+                },
+                "description": "Payees at least 3 customers pay regularly that match no biller: normalised name, customers, usual cadence, suggested terms. Counts only."
+              }
+            }
+          ]
         }
       ]
     }

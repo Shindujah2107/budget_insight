@@ -71,6 +71,7 @@ public class AdminEffectiveView {
   }
 
   private final BiCategoryRepository categories;
+  private final com.moneyreserve.repository.BiBillerRepository billers;
   private final BiMerchantCategoryMapRepository merchantRules;
   private final BiSmsSenderAllowlistRepository senders;
   private final BiBankParserTemplateRepository templates;
@@ -117,6 +118,31 @@ public class AdminEffectiveView {
         .sorted(Comparator.comparing(BiCategory::getSortOrder).thenComparing(BiCategory::getCode))
         .forEach(c -> published.put(c.getId(), toState(c)));
     return merge(ConfigEntityType.CATEGORY, published, AdminCategoryState.class);
+  }
+
+  public List<Item<com.moneyreserve.dto.AdminBillerState>> billers() {
+    Map<UUID, com.moneyreserve.dto.AdminBillerState> published = new LinkedHashMap<>();
+    billers.findAll().stream()
+        .sorted(
+            Comparator.comparing(com.moneyreserve.domain.BiBiller::getSortOrder)
+                .thenComparing(com.moneyreserve.domain.BiBiller::getCode))
+        .forEach(b -> published.put(b.getId(), toState(b)));
+    return merge(ConfigEntityType.BILLER, published, com.moneyreserve.dto.AdminBillerState.class);
+  }
+
+  public com.moneyreserve.dto.AdminBillerState toState(com.moneyreserve.domain.BiBiller b) {
+    return new com.moneyreserve.dto.AdminBillerState(
+        b.getCode(),
+        b.getNameEn(),
+        b.getNameSi(),
+        b.getNameTa(),
+        b.getBillType().name(),
+        com.moneyreserve.service.calc.MerchantTerms.split(b.getMatchTerms()),
+        b.getIconKey(),
+        b.getColourHex(),
+        b.getAmountTolerancePct() == null ? null : b.getAmountTolerancePct().intValue(),
+        b.getSortOrder() == null ? 0 : b.getSortOrder(),
+        Boolean.TRUE.equals(b.getIsActive()));
   }
 
   public List<Item<AdminMerchantRuleState>> merchantRules() {

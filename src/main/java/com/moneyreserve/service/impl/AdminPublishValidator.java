@@ -143,6 +143,39 @@ public class AdminPublishValidator {
             errors.size() == ruleErrors,
             "Every active merchant rule compiles and points at an active category"));
 
+    int billerErrors = errors.size();
+    Set<String> billerCodes = new HashSet<>();
+    for (Item<com.moneyreserve.dto.AdminBillerState> b : view.billers()) {
+      if (!b.survives()) {
+        continue;
+      }
+      com.moneyreserve.dto.AdminBillerState biller = b.effective();
+      if (!billerCodes.add(biller.code())) {
+        errors.add(
+            new Issue(
+                "BILLER_DUPLICATE",
+                ConfigEntityType.BILLER,
+                b.id(),
+                "Two billers with the code " + biller.code() + "."));
+      }
+      List<String> keywords = biller.terms() == null ? List.of() : biller.terms();
+      MerchantTerms.listProblem(keywords)
+          .or(() -> keywords.stream().map(MerchantTerms::problem).flatMap(Optional::stream).findFirst())
+          .ifPresent(
+              problem ->
+                  errors.add(
+                      new Issue(
+                          "MR.ADM.E.013",
+                          ConfigEntityType.BILLER,
+                          b.id(),
+                          "Biller " + biller.code() + " name terms are not valid: " + problem)));
+    }
+    checks.add(
+        new Check(
+            "BILLERS_VALID",
+            errors.size() == billerErrors,
+            "Every biller has its own code and valid name terms"));
+
     // --- templates ---------------------------------------------------------------------------
     int templateErrors = errors.size();
     List<LiveTemplate> live = new ArrayList<>();

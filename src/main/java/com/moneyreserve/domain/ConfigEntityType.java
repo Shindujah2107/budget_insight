@@ -9,7 +9,9 @@ public enum ConfigEntityType {
   /** A bank in the registry: rename, turn on/off, delete (adding a bank stays with its sender). */
   BANK("Bank"),
   /** The single budget policy row (bi_budget_policy). */
-  BUDGET_POLICY("Budget policy");
+  BUDGET_POLICY("Budget policy"),
+  /** A known biller for the bills radar (bi_biller, V1.19.0). */
+  BILLER("Biller");
 
   private final String label;
 

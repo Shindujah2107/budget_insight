@@ -45,6 +45,9 @@ final class AdminChangeLabels {
     FIELD_NAMES.put("alertCategoryApproaching", "category approaching alert");
     FIELD_NAMES.put("alertCategoryExceeded", "category exceeded alert");
     FIELD_NAMES.put("alertBudgetExceeded", "monthly budget exceeded alert");
+    FIELD_NAMES.put("billType", "bill type");
+    FIELD_NAMES.put("terms", "name terms");
+    FIELD_NAMES.put("tolerancePct", "amount tolerance");
   }
 
   /** Fields whose summary shows the values, e.g. "bucket Wants → Needs". */
@@ -77,6 +80,7 @@ final class AdminChangeLabels {
           case MERCHANT_RULE -> rule(view.convert(state, AdminMerchantRuleState.class));
           case BANK -> state.path("bankCode").asText() + " " + state.path("bankName").asText();
           case BUDGET_POLICY -> "";
+          case BILLER -> state.path("code").asText();
         };
     if (key.isBlank()) {
       return entity.label();

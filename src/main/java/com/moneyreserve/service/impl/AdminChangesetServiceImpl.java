@@ -99,6 +99,8 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
   private final BiBudgetPolicyRepository policies;
   private final BudgetPolicyProvider policy;
   private final CategorisationService categorisation;
+  private final com.moneyreserve.repository.BiBillerRepository billers;
+  private final com.moneyreserve.repository.BiUserBillRepository userBills;
   private final ObjectMapper objectMapper;
   private final DataSource dataSource;
   private final ObjectProvider<MeterRegistry> meters;
@@ -298,6 +300,8 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
               view.convert(payload, AdminBankState.class),
               view.convert(view.read(change.getBeforeState()), AdminBankState.class));
       case BUDGET_POLICY -> applyPolicy(id, view.convert(payload, AdminBudgetPolicyState.class));
+      case BILLER ->
+          applyBiller(change.getOp(), id, view.convert(payload, com.moneyreserve.dto.AdminBillerState.class));
     };
   }
 
@@ -363,6 +367,39 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
           "Bank name " + s.bankName() + " is already used by another bank. Change one of them and"
               + " review again.");
     }
+    return id;
+  }
+
+  private UUID applyBiller(ConfigChangeOp op, UUID id, com.moneyreserve.dto.AdminBillerState s) {
+    if (op == ConfigChangeOp.DELETE) {
+      if (userBills.countByBillerId(id) > 0) {
+        throw new BudgetInsightsException(
+            ErrorCode.ADMIN_PUBLISH_BLOCKED,
+            "A biller waiting to be deleted is now behind customers' bills. Turn it off instead.");
+      }
+      billers.deleteById(id);
+      billers.flush();
+      return id;
+    }
+    com.moneyreserve.domain.BiBiller row =
+        op == ConfigChangeOp.CREATE
+            ? com.moneyreserve.domain.BiBiller.builder().id(id).createdAt(OffsetDateTime.now()).build()
+            : billers.findById(id).orElseThrow(() -> missing(ConfigEntityType.BILLER, id));
+    row.setCode(s.code());
+    row.setNameEn(s.nameEn());
+    row.setNameSi(s.nameSi());
+    row.setNameTa(s.nameTa());
+    row.setBillType(com.moneyreserve.domain.BillType.valueOf(s.billType()));
+    row.setMatchTerms(com.moneyreserve.service.calc.MerchantTerms.join(s.terms()));
+    row.setIconKey(s.iconKey());
+    row.setColourHex(s.colourHex());
+    row.setAmountTolerancePct(s.tolerancePct() == null ? null : s.tolerancePct().shortValue());
+    row.setSortOrder((short) s.sortOrder());
+    row.setIsActive(s.active());
+    if (op != ConfigChangeOp.CREATE) {
+      row.setUpdatedAt(OffsetDateTime.now());
+    }
+    billers.saveAndFlush(row);
     return id;
   }
 
@@ -608,6 +645,8 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
         case TEMPLATE -> restoreTemplate(e.getKey(), desired, userId);
         case BANK -> restoreSimple(type, id, desired, AdminBankState.class, userId);
         case BUDGET_POLICY -> restoreSimple(type, id, desired, AdminBudgetPolicyState.class, userId);
+        case BILLER ->
+            restoreSimple(type, id, desired, com.moneyreserve.dto.AdminBillerState.class, userId);
       }
     }
     int created = (int) changes.count();
@@ -702,6 +741,7 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
               case TEMPLATE -> view.templates();
               case BANK -> view.banks();
               case BUDGET_POLICY -> view.budgetPolicy();
+              case BILLER -> view.billers();
             };
   }
 
@@ -739,6 +779,7 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
       case TEMPLATE -> 3;
       case BANK -> c.getOp() == ConfigChangeOp.DELETE ? 7 : -1;
       case BUDGET_POLICY -> 5;
+      case BILLER -> c.getOp() == ConfigChangeOp.DELETE ? 6 : 4;
     };
   }
 
