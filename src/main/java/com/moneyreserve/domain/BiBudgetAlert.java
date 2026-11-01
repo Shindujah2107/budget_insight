@@ -48,6 +48,10 @@ public class BiBudgetAlert {
   @Column(name = "category_id")
   private UUID categoryId;
 
+  /** The bill a BILL_* alert is about (its period_start is then the bill's due date). */
+  @Column(name = "bill_id")
+  private UUID billId;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "alert_type", nullable = false, length = 24)
   private BudgetAlertType alertType;
