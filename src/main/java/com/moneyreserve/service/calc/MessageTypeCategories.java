@@ -17,7 +17,9 @@ public final class MessageTypeCategories {
   /** The defaults, used when nothing is configured. */
   public static Map<String, String> defaults() {
     Map<String, String> m = new LinkedHashMap<>();
-    m.put("ATM_RECEIPT", "OTHER");
+    m.put("ATM_RECEIPT", "CASH_WITHDRAWAL");
+    m.put("CARD_ATM_WITHDRAWAL", "CASH_WITHDRAWAL");
+    m.put("CASH_WITHDRAWAL", "CASH_WITHDRAWAL");
     m.put("CRM_DEPOSIT", "OTHER");
     m.put("ACCOUNT_CHARGE", "OTHER");
     return m;

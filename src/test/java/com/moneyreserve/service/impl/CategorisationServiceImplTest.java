@@ -37,6 +37,7 @@ class CategorisationServiceImplTest {
   private static final UUID TRANSPORT = UUID.randomUUID();
   private static final UUID DINING = UUID.randomUUID();
   private static final UUID OTHER = UUID.randomUUID();
+  private static final UUID CASH = UUID.randomUUID();
 
   @Mock private BiMerchantCategoryMapRepository merchantMaps;
   @Mock private BiCategoryRepository categories;
@@ -66,6 +67,9 @@ class CategorisationServiceImplTest {
     lenient()
         .when(categories.findByCodeAndIsActiveTrue(BiCategory.OTHER_CODE))
         .thenReturn(Optional.of(category(OTHER, "OTHER", true)));
+    lenient()
+        .when(categories.findByCodeAndIsActiveTrue(BiCategory.CASH_WITHDRAWAL_CODE))
+        .thenReturn(Optional.of(category(CASH, "CASH_WITHDRAWAL", true)));
     lenient().when(categories.findById(TRANSPORT)).thenReturn(Optional.of(category(TRANSPORT, "TRANSPORT", true)));
     lenient().when(categories.findById(DINING)).thenReturn(Optional.of(category(DINING, "DINING_OUT", true)));
   }
@@ -166,7 +170,7 @@ class CategorisationServiceImplTest {
   void messageTypeLayer() {
     rules.add(rule("BUS", MatchType.TERMS, TRANSPORT, 10));
     assertEquals(
-        "OTHER",
+        "CASH_WITHDRAWAL",
         service
             .categorise(new CategorisationInput("KANDY BUS STAND", "ATM_RECEIPT", TxnDirection.DEBIT))
             .getCode());

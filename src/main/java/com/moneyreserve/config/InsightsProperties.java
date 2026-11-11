@@ -545,6 +545,7 @@ public class InsightsProperties {
                 "ic_subscriptions",
                 "ic_transfers",
                 "ic_bills_utilities",
+                "ic_cash_withdrawal",
                 "ic_other"));
 
     /**
