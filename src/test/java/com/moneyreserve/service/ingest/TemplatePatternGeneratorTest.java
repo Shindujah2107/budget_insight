@@ -114,7 +114,7 @@ class TemplatePatternGeneratorTest {
       assertNotNull(v, s.bankCode() + " " + s.messageType() + " not read by " + r.pattern());
       checked++;
     }
-    assertEquals(11, checked);
+    assertEquals(12, checked);
   }
 
   @Test

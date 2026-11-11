@@ -11,6 +11,32 @@
   ],
   "samples": [
     {
+      "bankCode": "7056",
+      "messageType": "ATM_RECEIPT",
+      "sms": "Withdrawal at POLGAHAWELA-1 BR POLGAHAWELA KGLK for LKR 25,000.00 on 01/03/26 10:12 AM from card ending #5308. Click link to view the Digital Receipt ... https://vas.combank.net/rec/...",
+      "expected": {
+        "amount": "25000.00",
+        "currency": "LKR",
+        "direction": "DEBIT",
+        "merchant": "POLGAHAWELA-1 BR POLGAHAWELA KGLK",
+        "txnDate": "2026-03-01",
+        "maskedTail": "5308"
+      }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "ATM_RECEIPT",
+      "sms": "Withdrawal at WELLAWAT-CRM1 BR WELLAWATTE COLK for LKR 8,000.00 on 11/11/26 12:34 PM from card ending #1234. Click link to view the Digital Receipt for Withdrawal performed at ComBank ATMs  https://vas.combank.net/rec/...",
+      "expected": {
+        "amount": "8000.00",
+        "currency": "LKR",
+        "direction": "DEBIT",
+        "merchant": "WELLAWAT-CRM1 BR WELLAWATTE COLK",
+        "txnDate": "2026-11-11",
+        "maskedTail": "1234"
+      }
+    },
+    {
       "bankCode": "7010",
       "messageType": "ACCOUNT_TXN",
       "sms": "Online Transfer Debit Rs 1,234.56 From A/C No XXXXXXXXXX999. Balance available Rs 9,876.54 - Thank you for banking with BOC",
@@ -620,10 +646,6 @@
     {
       "why": "NOT SEEDED (review tier) 7010 CHEQUE_DEBIT",
       "sms": "Cash Cheque Debit  CHQ/NO 123456 Rs 180000.00 From A/C No XXXXXXXXXX870. Balance available Rs 12345.67 - Thank you for banking with BOC"
-    },
-    {
-      "why": "NOT SEEDED (review tier) 7056 ATM_WITHDRAWAL",
-      "sms": "Withdrawal at POLGAHAWELA-1 BR POLGAHAWELA KGLK for LKR 25,000.00 on 01/03/26 10:12 AM from card ending #5308. Click link to view the Digital Receipt ... https://vas.combank.net/rec/..."
     },
     {
       "why": "NOT SEEDED (review tier) 7056 QPLUS_PAYMENT",

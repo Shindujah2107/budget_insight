@@ -27,6 +27,9 @@ public class BiCategory {
   /** Fallback category code. Must always exist and stay active — see {@code isFallback()}. */
   public static final String OTHER_CODE = "OTHER";
 
+  /** Cash taken out at an ATM or branch: listed, but never counted as spending. */
+  public static final String CASH_WITHDRAWAL_CODE = "CASH_WITHDRAWAL";
+
   @Id
   @Column(name = "id", nullable = false)
   private UUID id;

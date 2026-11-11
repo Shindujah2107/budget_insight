@@ -52,6 +52,9 @@ import org.junit.jupiter.api.Test;
 class BankSmsTemplateSeedTest {
 
   private static final String MIGRATION = "/db/migration/common/V1.3.0__bank_sms_parser_seed.sql";
+  /** Templates added after the first seed, each from real messages. */
+  private static final List<String> LATER =
+      List.of("/db/migration/common/V1.20.0__combank_atm_template.sql");
   private static final String SAMPLES = "/bank-sms/redacted-samples.json";
   private static final LocalDate RECEIVED = LocalDate.of(2026, 9, 21);
 
@@ -130,7 +133,7 @@ class BankSmsTemplateSeedTest {
   @Test
   @DisplayName("every pattern is anchored, flag-free, and every field_map is complete")
   void templatesAreSelfConsistent() throws IOException {
-    for (Template t : templates(migration())) {
+    for (Template t : allTemplates()) {
       String p = t.pattern().pattern();
       String name = t.bank() + " " + t.type();
       assertTrue(p.startsWith("^"), name + ": pattern must be anchored");
@@ -184,9 +187,9 @@ class BankSmsTemplateSeedTest {
   @Test
   @DisplayName("each real sample matches exactly one template and yields the hand-checked fields")
   void samplesParseToTheExpectedFields() throws IOException {
-    List<Template> templates = templates(migration());
+    List<Template> templates = allTemplates();
     JsonNode samples = samples().path("samples");
-    assertTrue(samples.size() >= 42, "sample set has been thinned out");
+    assertTrue(samples.size() >= 44, "sample set has been thinned out");
 
     List<String> failures = new ArrayList<>();
     Set<String> exercised = new HashSet<>();
@@ -226,9 +229,9 @@ class BankSmsTemplateSeedTest {
   @Test
   @DisplayName("OTP, marketing, declined, rejected, pending, informational and unseeded messages match nothing")
   void nonTransactionsMatchNothing() throws IOException {
-    List<Template> templates = templates(migration());
+    List<Template> templates = allTemplates();
     JsonNode negatives = samples().path("mustNotMatch");
-    assertTrue(negatives.size() >= 41, "must-not-match set has been thinned out");
+    assertTrue(negatives.size() >= 40, "must-not-match set has been thinned out");
     for (JsonNode n : negatives) {
       List<Template> hits = matching(templates, n.path("sms").asText());
       assertTrue(hits.isEmpty(), n.path("why").asText() + " matched " + hits.stream()
@@ -240,7 +243,7 @@ class BankSmsTemplateSeedTest {
   @DisplayName("the short-tail shapes send no tail rather than a padded or truncated one")
   void shortTailShapesSendNoTail() throws IOException {
     Set<String> absent = new HashSet<>();
-    for (Template t : templates(migration())) {
+    for (Template t : allTemplates()) {
       if ("ABSENT".equals(t.map().path("maskedTail").path("policy").asText())) {
         absent.add(t.bank() + " " + t.type());
       }
@@ -340,6 +343,18 @@ class BankSmsTemplateSeedTest {
       assertTrue(Boolean.parseBoolean(m.group(4)), "sender seeded inactive: " + m.group(3));
       assertFalse(out.containsKey(m.group(3)), "duplicate sender " + m.group(3));
       out.put(m.group(3), m.group(2));
+    }
+    return out;
+  }
+
+  /** The first seed plus every later template migration. */
+  private static List<Template> allTemplates() throws IOException {
+    List<Template> out = new ArrayList<>(templates(migration()));
+    for (String path : LATER) {
+      try (InputStream in = BankSmsTemplateSeedTest.class.getResourceAsStream(path)) {
+        assertNotNull(in, path + " is not on the classpath");
+        out.addAll(templates(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)));
+      }
     }
     return out;
   }

@@ -62,7 +62,7 @@ class MerchantCategorisationGoldenTest {
         List.of(
             "TRANSPORT", "UTILITIES", "HEALTH_CARE", "DEBT_PAYMENTS", "DINING_OUT", "ENTERTAINMENT",
             "PERSONAL_CARE", "SHOPPING", "GIFTS_DONATION", "EDUCATION", "WORK", "TRAVEL", "GYM",
-            "SUBSCRIPTIONS", "TRANSFERS", "BILLS_UTILITIES", "OTHER")) {
+            "SUBSCRIPTIONS", "TRANSFERS", "BILLS_UTILITIES", "CASH_WITHDRAWAL", "OTHER")) {
       BiCategory c =
           BiCategory.builder().id(UUID.randomUUID()).code(code).nameEn(code).iconKey("ic").isActive(true).build();
       byCode.put(code, c);
@@ -138,7 +138,7 @@ class MerchantCategorisationGoldenTest {
   @Test
   @DisplayName("layer 0: an ATM receipt is cash whatever its location says")
   void messageTypeDecides() {
-    assertEquals("OTHER", service.categorise(new CategorisationInput("KANDY BUS STAND", "ATM_RECEIPT", TxnDirection.DEBIT)).getCode());
+    assertEquals("CASH_WITHDRAWAL", service.categorise(new CategorisationInput("KANDY BUS STAND", "ATM_RECEIPT", TxnDirection.DEBIT)).getCode());
     assertEquals("TRANSPORT", service.categorise(new CategorisationInput("KANDY BUS STAND", "CARD_PURCHASE", TxnDirection.DEBIT)).getCode());
   }
 

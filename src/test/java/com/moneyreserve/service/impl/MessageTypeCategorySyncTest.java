@@ -35,12 +35,13 @@ class MessageTypeCategorySyncTest {
   }
 
   @Test
-  @DisplayName("the V1.15.0 seed (the three defaults) leaves the map exactly as configured")
+  @DisplayName("the seeded list (V1.15.0, ATM types moved to Cash withdrawal by V1.20.1) leaves the map as configured")
   void seedChangesNothing() {
     InsightsProperties properties = new InsightsProperties();
     Map<String, String> before = Map.copyOf(properties.getCategorisation().getMessageTypeCategories());
     List<BiMessageType> rows = new ArrayList<>(List.of(
-        type("ATM_RECEIPT", "OTHER"), type("CRM_DEPOSIT", "OTHER"), type("ACCOUNT_CHARGE", "OTHER"),
+        type("ATM_RECEIPT", "CASH_WITHDRAWAL"), type("CARD_ATM_WITHDRAWAL", "CASH_WITHDRAWAL"),
+        type("CASH_WITHDRAWAL", "CASH_WITHDRAWAL"), type("CRM_DEPOSIT", "OTHER"), type("ACCOUNT_CHARGE", "OTHER"),
         type("CARD_PURCHASE", null), type("ACCOUNT_TXN", null)));
     new MessageTypeCategorySync(repo(rows), properties).refresh();
     assertEquals(before, properties.getCategorisation().getMessageTypeCategories());
@@ -70,13 +71,13 @@ class MessageTypeCategorySyncTest {
   @DisplayName("a change is picked up on the next refresh, and undone when the list is restored")
   void refreshFollowsTheList() {
     InsightsProperties properties = new InsightsProperties();
-    List<BiMessageType> rows = new ArrayList<>(List.of(type("ATM_RECEIPT", "OTHER")));
+    List<BiMessageType> rows = new ArrayList<>(List.of(type("ATM_RECEIPT", "CASH_WITHDRAWAL")));
     MessageTypeCategorySync sync = new MessageTypeCategorySync(repo(rows), properties);
     sync.refresh();
     rows.set(0, type("ATM_RECEIPT", null));
     sync.refresh();
     assertEquals(null, properties.getCategorisation().getMessageTypeCategories().get("ATM_RECEIPT"));
-    rows.set(0, type("ATM_RECEIPT", "OTHER"));
+    rows.set(0, type("ATM_RECEIPT", "CASH_WITHDRAWAL"));
     sync.refresh();
     assertEquals(MessageTypeCategories.defaults(), properties.getCategorisation().getMessageTypeCategories());
   }

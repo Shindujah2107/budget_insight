@@ -21,6 +21,10 @@ import org.springframework.data.repository.query.Param;
  * deleted. They are repeated in each query rather than factored out because a spend total that
  * quietly included credits, or a deleted row, would be wrong in a way nobody notices until a
  * customer adds up their own receipts.
+ *
+ * <p>Spend totals also leave out {@code CASH_WITHDRAWAL}: cash taken out of an ATM is money moved
+ * to the customer's pocket, not spent, and what they spend it on is added by hand. The rows stay
+ * in the ledger list; only the totals skip them.
  */
 public interface BiTransactionRepository extends JpaRepository<BiTransaction, UUID> {
 
@@ -51,6 +55,8 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
+        AND NOT EXISTS (SELECT 1 FROM BiCategory cw
+                        WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
       """)
   BigDecimal sumSpendBetween(
       @Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
@@ -71,6 +77,8 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
+        AND NOT EXISTS (SELECT 1 FROM BiCategory cw
+                        WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
       GROUP BY t.categoryId
       ORDER BY SUM(t.amount) DESC
       """)
@@ -109,6 +117,8 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
+        AND NOT EXISTS (SELECT 1 FROM BiCategory cw
+                        WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
         AND a.deletedAt IS NULL
       GROUP BY t.txnDate, a.instrumentType
       ORDER BY t.txnDate
@@ -127,6 +137,8 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
+        AND NOT EXISTS (SELECT 1 FROM BiCategory cw
+                        WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
         AND a.deletedAt IS NULL
       GROUP BY t.txnDate, a.instrumentType
       ORDER BY t.txnDate
@@ -157,6 +169,8 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
+        AND NOT EXISTS (SELECT 1 FROM BiCategory cw
+                        WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
         AND (t.accountId IS NULL
              OR NOT EXISTS (SELECT 1 FROM BiAccount a
                             WHERE a.id = t.accountId AND a.deletedAt IS NULL))
@@ -268,6 +282,9 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
         AND (:accountId IS NULL OR t.accountId = :accountId)
+        AND NOT (t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
+                 AND EXISTS (SELECT 1 FROM BiCategory cw
+                             WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL'))
       GROUP BY t.direction
       """)
   List<Object[]> sumLedgerByDirection(
