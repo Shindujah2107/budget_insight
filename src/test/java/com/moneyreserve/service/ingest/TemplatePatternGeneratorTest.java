@@ -127,4 +127,35 @@ class TemplatePatternGeneratorTest {
             .toList();
     assertEquals(List.of("EMAIL", "LONG_NUMBER", "NAME"), kinds);
   }
+
+  @Test
+  @DisplayName("\"Rs\" marked as the currency is read as LKR (BOC POS/ATM, as an admin marks it)")
+  void rupeeSignMarkedAsCurrency() {
+    String sms =
+        "POS/ATM Transaction Rs 1234.56 From A/C No XXXXXXXXXX123. Balance available Rs 1234.56 - Thank you for banking with BOC";
+    int rs = sms.indexOf("Rs");
+    int amount = sms.indexOf("1234.56");
+    int account = sms.indexOf("XXXXXXXXXX123");
+    int balance = sms.lastIndexOf("1234.56");
+    List<TemplateSampleAnalyser.Annotation> marks =
+        List.of(
+            new TemplateSampleAnalyser.Annotation(0, 3, "MERCHANT", null, null, null, null),
+            new TemplateSampleAnalyser.Annotation(rs, rs + 2, "CURRENCY", null, null, null, null),
+            new TemplateSampleAnalyser.Annotation(amount, amount + 7, "AMOUNT", null, null, null, null),
+            new TemplateSampleAnalyser.Annotation(account, account + 13, "IGNORE", null, null, null, "TEXT"),
+            new TemplateSampleAnalyser.Annotation(balance, balance + 7, "IGNORE", null, null, null, "TEXT"));
+    ObjectNode fixed = JSON.createObjectNode().putNull("currency").put("direction", "DEBIT").put("txnDateSource", "SMS_RECEIVED_DATE");
+    ObjectNode options = JSON.createObjectNode().put("flexibleSpacing", true).put("trailing", "ENDS").put("generaliseNumbers", true);
+    ObjectNode spec = TemplateSampleAnalyser.buildSpec(sms, marks, fixed, options, "CARD_PURCHASE", "BANK", List.of("BOC"));
+    TemplatePatternGenerator.Result r = TemplatePatternGenerator.generate(spec);
+    Map<String, String> v = TemplateFieldMap.read(Pattern.compile(r.pattern()), r.fieldMap(), sms, LocalDate.now());
+    assertNotNull(v, r.pattern());
+    assertEquals("1234.56", v.get("amount"));
+    assertEquals("LKR", v.get("currency"));
+    assertEquals("DEBIT", v.get("direction"));
+    assertEquals("POS", v.get("merchant"));
+    // Another amount and balance on the same format.
+    assertNotNull(TemplateFieldMap.read(Pattern.compile(r.pattern()), r.fieldMap(),
+        sms.replace("1234.56 From", "6879.14 From").replace("Rs 1234.56 -", "Rs 81.86 -"), LocalDate.now()));
+  }
 }

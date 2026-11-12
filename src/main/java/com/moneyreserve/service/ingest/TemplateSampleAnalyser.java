@@ -352,6 +352,12 @@ public final class TemplateSampleAnalyser {
         addLiteral(segments, sample.substring(cursor, a.start()), generalise);
       }
       cursor = a.end();
+      if ("CURRENCY".equals(a.field()) && !text.matches("^[A-Z]{3}$")) {
+        // "Rs" / "Rs." is how Sri Lankan banks write rupees: fixed wording, read as LKR. A
+        // currency group would only accept a three-letter code and the template would never match.
+        addLiteral(segments, text, generalise);
+        continue;
+      }
       if ("IGNORE".equals(a.field())) {
         String kind = a.ignoreKind() != null ? a.ignoreKind() : ignoreKindOf(text);
         if (TemplatePatternGenerator.enumOf(IgnoreKind.class, kind) == null) {
