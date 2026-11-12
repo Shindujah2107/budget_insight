@@ -109,6 +109,18 @@ public class BiTransaction {
   @Column(name = "idempotency_key", nullable = false, length = 128)
   private String idempotencyKey;
 
+  /** {@code CASH_WALLET} when paid from (or into) the cash wallet (V1.21.0); null otherwise. */
+  @Column(name = "payment_source", length = 16)
+  private String paymentSource;
+
+  /**
+   * A confirmed movement of the customer's own money (V1.21.0): {@code BANK_TO_CASH},
+   * {@code CASH_TO_BANK}, {@code OWN_ACCOUNT} or {@code BALANCE_CORRECTION}. Such a row is neither
+   * spending nor income. Null for everything else.
+   */
+  @Column(name = "movement", length = 24)
+  private String movement;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
