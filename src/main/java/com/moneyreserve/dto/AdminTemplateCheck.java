@@ -19,13 +19,16 @@ public record AdminTemplateCheck(
    *     maskedTail
    * @param highlights where each captured field sits in the sample (character offsets)
    * @param category the category the extracted merchant would get today
+   * @param categoryVia why: {@code MESSAGE_TYPE} (decided by the message type), {@code RULE} (a
+   *     merchant rule matched the merchant text) or {@code NONE} (no rule: Other, needs a category)
    */
   public record Extracted(
       int sample,
       boolean matched,
       Map<String, String> fields,
       List<Highlight> highlights,
-      AdminMerchantRuleTest.CategoryRef category) {}
+      AdminMerchantRuleTest.CategoryRef category,
+      String categoryVia) {}
 
   public record Highlight(String field, int start, int end) {}
 }

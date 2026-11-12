@@ -153,4 +153,52 @@ class AdminTemplateBuilderIT {
       admin.config(HttpMethod.DELETE, "/changeset/changes/" + changeId, null);
     }
   }
+
+  @Test
+  @DisplayName("the preview says why a merchant gets its category: no rule (needs a category) or a rule")
+  void categoryReasonInPreview() throws Exception {
+    AdminTestSupport admin = new AdminTestSupport(rest, UUID.randomUUID());
+    String sms =
+        "POS/ATM Transaction Rs 1234.56 From A/C No XXXXXXXXXX123. Balance available Rs 1234.56 - Thank you for banking with BOC";
+    int amount = sms.indexOf("1234.56");
+    int rs = sms.indexOf("Rs");
+    int account = sms.indexOf("XXXXXXXXXX123");
+    String body =
+        "{\"bankCode\":\"7010\",\"messageType\":\"WIZ_POS_" + System.nanoTime() % 100000 + "\","
+            + "\"logicalType\":\"CARD_PURCHASE\",\"instrumentType\":\"BANK\",\"senders\":[\"BOC\"],\"sample\":\"" + sms
+            + "\",\"annotations\":[{\"start\":0,\"end\":3,\"field\":\"MERCHANT\"},"
+            + "{\"start\":" + rs + ",\"end\":" + (rs + 2) + ",\"field\":\"CURRENCY\"},"
+            + "{\"start\":" + amount + ",\"end\":" + (amount + 7) + ",\"field\":\"AMOUNT\"},"
+            + "{\"start\":" + account + ",\"end\":" + (account + 13) + ",\"field\":\"IGNORE\",\"ignoreKind\":\"MASKED_X\"}],"
+            + "\"fixed\":{\"currency\":null,\"direction\":\"DEBIT\",\"txnDateSource\":\"SMS_RECEIVED_DATE\"},"
+            + "\"options\":{\"flexibleSpacing\":true,\"trailing\":\"ENDS\",\"generaliseNumbers\":true},"
+            + "\"redactionConfirmed\":true}";
+
+    ResponseEntity<String> plain = admin.config(HttpMethod.POST, "/templates/builder/generate", body);
+    assertEquals(200, plain.getStatusCode().value(), plain.getBody());
+    JsonNode read = data(plain).path("check").path("extracted").get(0);
+    assertTrue(read.path("matched").asBoolean(), plain.getBody());
+    assertEquals("LKR", read.path("fields").path("currency").asText(), "Rs is read as LKR");
+    assertEquals("NONE", read.path("categoryVia").asText(), "no rule knows POS: it will need a category");
+
+    // A merchant rule for the same word: the preview now says a rule decides.
+    ResponseEntity<String> category =
+        admin.config(HttpMethod.POST, "/categories",
+            "{\"code\":\"WIZ_" + System.nanoTime() % 100000 + "\",\"nameEn\":\"Wizard\",\"iconKey\":\"ic_shopping\",\"sortOrder\":41,\"active\":true}");
+    String categoryId = data(category).path("item").path("id").asText();
+    ResponseEntity<String> rule =
+        admin.config(HttpMethod.POST, "/merchant-rules",
+            "{\"mode\":\"SIMPLE\",\"matchType\":\"EXACT\",\"names\":[\"pos\"],\"categoryId\":\"" + categoryId
+                + "\",\"priorityLevel\":\"HIGH\",\"active\":true}");
+    assertEquals(201, rule.getStatusCode().value(), rule.getBody());
+    try {
+      JsonNode ruled =
+          data(admin.config(HttpMethod.POST, "/templates/builder/generate", body)).path("check").path("extracted").get(0);
+      assertEquals("RULE", ruled.path("categoryVia").asText(), ruled.toString());
+    } finally {
+      // Drafts in this shared context would block later publish-alls.
+      admin.config(HttpMethod.DELETE, "/changeset/changes/" + data(rule).path("item").path("pendingChangeId").asText(), null);
+      admin.config(HttpMethod.DELETE, "/changeset/changes/" + data(category).path("item").path("pendingChangeId").asText(), null);
+    }
+  }
 }

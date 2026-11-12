@@ -171,7 +171,7 @@ public class AdminTemplateChecks {
     int matched = 0;
     List<String> given = samples == null ? List.of() : samples;
     for (int i = 0; i < given.size(); i++) {
-      Extracted e = compiled == null || !map.ok() ? new Extracted(i, false, null, List.of(), null) : extract(i, compiled, fieldMap, given.get(i), messageType);
+      Extracted e = compiled == null || !map.ok() ? new Extracted(i, false, null, List.of(), null, null) : extract(i, compiled, fieldMap, given.get(i), messageType);
       extracted.add(e);
       if (e.matched()) {
         matched++;
@@ -199,7 +199,7 @@ public class AdminTemplateChecks {
       fields = null;
     }
     if (fields == null) {
-      return new Extracted(index, false, null, List.of(), null);
+      return new Extracted(index, false, null, List.of(), null, null);
     }
     fields = ordered(fields);
     Matcher m = pattern.matcher(sms);
@@ -212,13 +212,14 @@ public class AdminTemplateChecks {
         }
       }
     }
-    CategoryRef category = null;
+    Decided decided = null;
     String merchant = fields.get("merchant");
     if (merchant != null && !merchant.isBlank()) {
-      category = categoryFor(merchant, messageType);
+      decided = categoryFor(merchant, messageType);
     }
     boolean usable = fields.get("amount") != null && fields.get("direction") != null && fields.get("txnDate") != null;
-    return new Extracted(index, usable, fields, highlights, category);
+    return new Extracted(
+        index, usable, fields, highlights, decided == null ? null : decided.category(), decided == null ? null : decided.via());
   }
 
   /**
@@ -226,7 +227,10 @@ public class AdminTemplateChecks {
    * rules with pending changes applied), using the categoriser's matcher and order; OTHER when no
    * rule matches, {@code null} when there is no OTHER yet.
    */
-  private CategoryRef categoryFor(String merchant, String messageType) {
+  /** A category and why it was chosen (MESSAGE_TYPE, RULE or NONE). */
+  private record Decided(CategoryRef category, String via) {}
+
+  private Decided categoryFor(String merchant, String messageType) {
     String needle = MerchantRuleMatcher.normalise(merchant);
     Map<UUID, Item<AdminCategoryState>> categories = AdminEffectiveView.byId(view.categories());
     // Layer 0 first, exactly as ingest: some message types are decided by type alone.
@@ -239,7 +243,7 @@ public class AdminTemplateChecks {
               .findFirst()
               .map(c -> new CategoryRef(c.effective().code(), c.effective().nameEn()));
       if (typed.isPresent()) {
-        return typed.get();
+        return new Decided(typed.get(), "MESSAGE_TYPE");
       }
     }
     List<Item<AdminMerchantRuleState>> live =
@@ -265,14 +269,16 @@ public class AdminTemplateChecks {
             .findFirst();
     if (hit.isPresent()) {
       AdminCategoryState c = categories.get(hit.get().categoryId()).effective();
-      return new CategoryRef(c.code(), c.nameEn());
+      return new Decided(new CategoryRef(c.code(), c.nameEn()), "RULE");
     }
-    return categories.values().stream()
-        .map(Item::effective)
-        .filter(c -> AdminCategoryState.OTHER.equals(c.code()))
-        .findFirst()
-        .map(c -> new CategoryRef(c.code(), c.nameEn()))
-        .orElse(null);
+    return new Decided(
+        categories.values().stream()
+            .map(Item::effective)
+            .filter(c -> AdminCategoryState.OTHER.equals(c.code()))
+            .findFirst()
+            .map(c -> new CategoryRef(c.code(), c.nameEn()))
+            .orElse(null),
+        "NONE");
   }
 
   /**
