@@ -96,6 +96,11 @@ public class DataRightsServiceImpl implements DataRightsService {
           new CustomerTable("budgetAlerts", "BiBudgetAlert", BY_USER, true),
           // Bills radar (V1.19.0): the customer's bills, after the alerts that point at them.
           new CustomerTable("bills", "BiUserBill", BY_USER, true),
+          // Cash wallet (V1.21.0): checks, applied reviews and ledger entries, then the wallet.
+          new CustomerTable("cashWalletReviews", "BiCashWalletReview", BY_USER, true),
+          new CustomerTable("cashWalletOperations", "BiCashWalletOperation", BY_USER, false),
+          new CustomerTable("cashWalletEntries", "BiCashWalletEntry", BY_USER, true),
+          new CustomerTable("cashWallets", "BiCashWallet", BY_USER, true),
           // Derived and reconstructible from the rows below it. Erased so nothing survives, not
           // exported because handing someone a cache of their own figures is noise, not data.
           new CustomerTable("insightCache", "BiInsightCache", BY_USER, false),

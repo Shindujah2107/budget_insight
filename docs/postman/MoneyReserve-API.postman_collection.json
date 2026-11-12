@@ -819,6 +819,100 @@
       ]
     },
     {
+      "name": "Cash wallet",
+      "description": "The signed-in customer's cash in hand (V1.21.0): a ledger per customer and currency. Opened explicitly with the cash they hold; ATM withdrawals after that add to it, expenses paid with paymentSource CASH_WALLET take from it (409 CASH_INSUFFICIENT / CASH_NOT_ACTIVE, nothing saved), and a balance check settles differences as spending, a bank deposit, income, a bank transfer or a correction. Owner-scoped.",
+      "item": [
+        {
+          "name": "Cash wallet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/cash-wallet?currency=LKR",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "cash-wallet"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "LKR"
+                }
+              ]
+            },
+            "description": "Balance, version (pass it back to reconcile), activity (newest 20) and reviewDueAt (oldest unanswered withdrawal + 7 days). Inactive until opened: active false, balance 0.00."
+          }
+        },
+        {
+          "name": "Cash wallet activity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/cash-wallet/activity?currency=LKR&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "cash-wallet",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "LKR"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "The wallet's transactions, newest first, a page at a time (size up to 50). Not used for the balance."
+          }
+        },
+        {
+          "name": "Reconcile cash",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/cash-wallet/reconcile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "cash-wallet",
+                "reconcile"
+              ]
+            },
+            "description": "Open the wallet (reason CORRECTION, actual = opening cash), confirm (no reason, same amount) or explain a difference: SPENT (categoryId), DEPOSIT / TRANSFER (accountId, optional matchingTransactionId), INCOME, CORRECTION. Applied once per clientRef; 409 CASH_STALE if expectedVersion is not current; 422 CASH_REFERENCE_REUSED for the same clientRef with different details.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"LKR\",\n  \"clientRef\": \"cash-1731340000000-abc123\",\n  \"expectedVersion\": \"3\",\n  \"actual\": \"4500.00\",\n  \"reason\": \"SPENT\",\n  \"categoryId\": \"{{categoryId}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "BI-36 — Device-side compliance reporting",
       "item": [
         {

@@ -64,6 +64,8 @@ public class InsightsMapper {
         .editable(TxnSource.MANUAL.equals(txn.getSource()))
         .isUserCategorised(Boolean.TRUE.equals(txn.getIsUserCategorised()))
         .categorySource(txn.getCategorySource() == null ? null : txn.getCategorySource().name())
+        .paymentSource(txn.getPaymentSource())
+        .movement(txn.getMovement())
         .build();
   }
 

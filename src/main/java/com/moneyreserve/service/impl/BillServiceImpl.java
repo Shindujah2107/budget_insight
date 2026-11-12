@@ -4,6 +4,7 @@ import com.moneyreserve.config.Caller;
 import com.moneyreserve.config.InsightsProperties;
 import com.moneyreserve.domain.BiBiller;
 import com.moneyreserve.domain.BiBudgetAlert;
+import com.moneyreserve.domain.BiCategory;
 import com.moneyreserve.domain.BiTransaction;
 import com.moneyreserve.domain.BiUserBill;
 import com.moneyreserve.domain.BillCadence;
@@ -460,9 +461,15 @@ public class BillServiceImpl implements BillService {
     LocalDate today = today();
     LocalDate from = today.minusMonths(Math.max(1, properties.getLookbackMonths()));
     UUID transfers = categories.findByCodeAndIsActiveTrue(TRANSFERS).map(c -> c.getId()).orElse(null);
+    UUID cashWithdrawal =
+        categories.findByCodeAndIsActiveTrue(BiCategory.CASH_WITHDRAWAL_CODE).map(c -> c.getId()).orElse(null);
     List<Payment> out = new ArrayList<>();
     for (BiTransaction t :
         transactions.findAllByUserIdAndTxnDateBetweenAndDeletedAtIsNullOrderByTxnDateDesc(userId, from, today)) {
+      // Cash taken out at an ATM and confirmed own-money movements are never a bill payment.
+      if (t.getMovement() != null || (cashWithdrawal != null && cashWithdrawal.equals(t.getCategoryId()))) {
+        continue;
+      }
       out.add(
           new Payment(
               t.getTxnDate(),

@@ -71,4 +71,8 @@ public class CreateTransactionRequest {
   /** Client-generated retry key, unique per customer. */
   @Size(max = 96, message = "Client reference is too long.")
   private String clientRef;
+
+  /** {@code CASH_WALLET}: pay from the cash wallet (it must be active and hold enough). */
+  @Pattern(regexp = "^CASH_WALLET$", message = "Please choose how this was paid.")
+  private String paymentSource;
 }

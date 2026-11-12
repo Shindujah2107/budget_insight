@@ -24,7 +24,9 @@ import org.springframework.data.repository.query.Param;
  *
  * <p>Spend totals also leave out {@code CASH_WITHDRAWAL}: cash taken out of an ATM is money moved
  * to the customer's pocket, not spent, and what they spend it on is added by hand. The rows stay
- * in the ledger list; only the totals skip them.
+ * in the ledger list; only the totals skip them. So do confirmed own-money movements
+ * ({@code movement}: cash to bank, bank to cash, balance corrections, V1.21.0), which are neither
+ * spending nor income.
  */
 public interface BiTransactionRepository extends JpaRepository<BiTransaction, UUID> {
 
@@ -57,6 +59,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.deletedAt IS NULL
         AND NOT EXISTS (SELECT 1 FROM BiCategory cw
                         WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
+        AND t.movement IS NULL
       """)
   BigDecimal sumSpendBetween(
       @Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
@@ -79,6 +82,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.deletedAt IS NULL
         AND NOT EXISTS (SELECT 1 FROM BiCategory cw
                         WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
+        AND t.movement IS NULL
       GROUP BY t.categoryId
       ORDER BY SUM(t.amount) DESC
       """)
@@ -119,6 +123,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.deletedAt IS NULL
         AND NOT EXISTS (SELECT 1 FROM BiCategory cw
                         WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
+        AND t.movement IS NULL
         AND a.deletedAt IS NULL
       GROUP BY t.txnDate, a.instrumentType
       ORDER BY t.txnDate
@@ -139,6 +144,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.deletedAt IS NULL
         AND NOT EXISTS (SELECT 1 FROM BiCategory cw
                         WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
+        AND t.movement IS NULL
         AND a.deletedAt IS NULL
       GROUP BY t.txnDate, a.instrumentType
       ORDER BY t.txnDate
@@ -171,6 +177,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.deletedAt IS NULL
         AND NOT EXISTS (SELECT 1 FROM BiCategory cw
                         WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
+        AND t.movement IS NULL
         AND (t.accountId IS NULL
              OR NOT EXISTS (SELECT 1 FROM BiAccount a
                             WHERE a.id = t.accountId AND a.deletedAt IS NULL))
@@ -187,6 +194,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
+        AND t.movement IS NULL
       """)
   BigDecimal sumSpendByCategoryBetween(
       @Param("userId") UUID userId,
@@ -209,6 +217,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
+        AND t.movement IS NULL
       ORDER BY t.txnDate DESC, t.txnTimestamp DESC NULLS LAST, t.createdAt DESC, t.id DESC
       """)
   Page<BiTransaction> pageCategorySpend(
@@ -282,6 +291,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
         AND t.txnDate BETWEEN :from AND :to
         AND t.deletedAt IS NULL
         AND (:accountId IS NULL OR t.accountId = :accountId)
+        AND t.movement IS NULL
         AND NOT (t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
                  AND EXISTS (SELECT 1 FROM BiCategory cw
                              WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL'))

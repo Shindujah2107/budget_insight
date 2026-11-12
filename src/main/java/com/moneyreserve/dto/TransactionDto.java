@@ -39,4 +39,8 @@ public class TransactionDto {
    * shown as needing a category). Absent on rows not yet backfilled.
    */
   private String categorySource;
+  /** {@code CASH_WALLET} when the cash wallet paid (or received) it. */
+  private String paymentSource;
+  /** A confirmed own-money movement: neither spending nor income. */
+  private String movement;
 }

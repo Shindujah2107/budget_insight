@@ -53,6 +53,10 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
   /** Bills radar: re-checked once a payment commits. Optional so focused tests need not wire it. */
   @org.springframework.beans.factory.annotation.Autowired(required = false)
   private com.moneyreserve.service.BillService bills;
+
+  /** The cash wallet: every change to a cash-paid row moves it, in this same transaction. */
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private CashWalletService cash;
   private final BiTransactionRepository transactions;
   private final BiTransactionAuditRepository audits;
   private final BiAccountRepository accounts;
@@ -105,6 +109,25 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     BiCategory category = chosen ? queries.requireCategory(request.getCategoryId()) : auto;
 
     BiAccount account = resolveAccount(userId, request.getAccountId());
+    String currency =
+        request.getCurrency() == null || request.getCurrency().isBlank()
+            ? properties.getCurrency()
+            : request.getCurrency();
+    // Paid from the cash wallet: asked for, or cash (no account) while the wallet is active, so an
+    // older app cannot spend cash behind the wallet's back. Cash taken out at an ATM is a movement
+    // into the wallet, never an expense paid from it.
+    String paymentSource = null;
+    if (cash != null
+        && cash.paysFromWallet(
+            userId, currency, request.getPaymentSource(), account == null ? null : account.getId())) {
+      if (BiCategory.CASH_WITHDRAWAL_CODE.equals(category.getCode())) {
+        if (CashWalletService.CASH_WALLET.equals(request.getPaymentSource())) {
+          cash.requireSpendableCategory(category);
+        }
+      } else {
+        paymentSource = CashWalletService.CASH_WALLET;
+      }
+    }
 
     BiTransaction txn =
         BiTransaction.builder()
@@ -126,9 +149,14 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
             .categorySource(chosen ? CategorySource.USER : decision.source())
             .source(TxnSource.MANUAL)
             .idempotencyKey(idempotencyKey)
+            .paymentSource(paymentSource)
             .build();
 
     BiTransaction saved = transactions.save(txn);
+    if (cash != null) {
+      // Refuses (and rolls this whole save back) when the wallet doesn't hold enough.
+      cash.sync(saved, true);
+    }
     audit(saved, AuditAction.CREATE, null, category.getId(), userId);
     invalidate(userId, txnDate);
     // In this transaction, so the evaluation sees the row just written (BI-25).
@@ -196,6 +224,11 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
       throw new BudgetInsightsException(ErrorCode.INSIGHTS_TXN_NOT_EDITABLE);
     }
 
+    boolean sourceEdit = request.getPaymentSource() != null || request.getAccountId() != null;
+    if (sourceEdit && !manual) {
+      throw new BudgetInsightsException(ErrorCode.INSIGHTS_TXN_NOT_EDITABLE);
+    }
+
     LocalDate previousDate = txn.getTxnDate();
     UUID previousCategoryId = txn.getCategoryId();
     boolean recategorised = false;
@@ -241,8 +274,29 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     if (request.getTxnDate() != null) {
       txn.setTxnDate(requireUsableDate(request.getTxnDate()));
     }
+    if (sourceEdit) {
+      if (CashWalletService.CASH_WALLET.equals(request.getPaymentSource())) {
+        if (cash == null || !cash.paysFromWallet(userId, txn.getCurrency(), request.getPaymentSource(), null)) {
+          throw new BudgetInsightsException(ErrorCode.CASH_NOT_ACTIVE);
+        }
+        txn.setAccountId(null);
+        txn.setPaymentSource(CashWalletService.CASH_WALLET);
+      } else {
+        BiAccount account = resolveAccount(userId, request.getAccountId());
+        txn.setAccountId(account == null ? null : account.getId());
+        txn.setPaymentSource(null);
+      }
+    }
+    if (cash != null
+        && (recategorised || sourceEdit)
+        && CashWalletService.CASH_WALLET.equals(txn.getPaymentSource())) {
+      cash.requireSpendableCategory(queries.requireCategory(txn.getCategoryId()));
+    }
 
     BiTransaction saved = transactions.save(txn);
+    if (cash != null) {
+      cash.sync(saved, CashWalletService.CASH_WALLET.equals(saved.getPaymentSource()));
+    }
 
     if (recategorised) {
       audit(saved, AuditAction.RECATEGORISE, previousCategoryId, saved.getCategoryId(), userId);
@@ -254,6 +308,9 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
       other.setIsUserCategorised(Boolean.TRUE);
       other.setCategorySource(CategorySource.USER);
       transactions.save(other);
+      if (cash != null) {
+        cash.sync(other, false);
+      }
       audit(other, AuditAction.RECATEGORISE, before, other.getCategoryId(), userId);
       touched.add(other.getTxnDate().withDayOfMonth(1));
     }
@@ -339,6 +396,9 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
 
     txn.setDeletedAt(OffsetDateTime.now());
     BiTransaction saved = transactions.save(txn);
+    if (cash != null) {
+      cash.sync(saved, false);
+    }
 
     audit(saved, AuditAction.DELETE, saved.getCategoryId(), null, userId);
     invalidate(userId, saved.getTxnDate());

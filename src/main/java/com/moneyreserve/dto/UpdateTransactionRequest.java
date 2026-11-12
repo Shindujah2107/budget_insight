@@ -59,4 +59,12 @@ public class UpdateTransactionRequest {
 
   /** True when the caller means to clear the note rather than leave it unchanged. */
   private Boolean clearDescription;
+
+  /** {@code CASH_WALLET} or {@code ACCOUNT}: move a manual entry onto or off the cash wallet. */
+  @jakarta.validation.constraints.Pattern(
+      regexp = "^(CASH_WALLET|ACCOUNT)$", message = "Please choose how this was paid.")
+  private String paymentSource;
+
+  /** With {@code ACCOUNT}: one of the customer's own accounts, or none. */
+  private java.util.UUID accountId;
 }

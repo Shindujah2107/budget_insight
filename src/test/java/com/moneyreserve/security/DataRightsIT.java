@@ -106,7 +106,11 @@ class DataRightsIT {
           new Owned("BiDeviceSyncState", BY_USER),
           new Owned("BiDataExport", BY_USER),
           new Owned("BiUserMerchantCategory", BY_USER),
-          new Owned("BiUserBill", BY_USER));
+          new Owned("BiUserBill", BY_USER),
+          new Owned("BiCashWallet", BY_USER),
+          new Owned("BiCashWalletEntry", BY_USER),
+          new Owned("BiCashWalletOperation", BY_USER),
+          new Owned("BiCashWalletReview", BY_USER));
 
   /**
    * Shared across every customer. Nothing in them is anyone's to export or erase.
@@ -179,6 +183,10 @@ class DataRightsIT {
   @Autowired private BiDeviceSyncStateRepository syncStates;
   @Autowired private com.moneyreserve.repository.BiUserMerchantCategoryRepository merchantChoices;
   @Autowired private com.moneyreserve.repository.BiUserBillRepository userBills;
+  @Autowired private com.moneyreserve.repository.BiCashWalletRepository cashWallets;
+  @Autowired private com.moneyreserve.repository.BiCashWalletEntryRepository cashEntries;
+  @Autowired private com.moneyreserve.repository.BiCashWalletOperationRepository cashOperations;
+  @Autowired private com.moneyreserve.repository.BiCashWalletReviewRepository cashReviews;
   @Autowired private com.moneyreserve.repository.BiBudgetAlertRepository billAlerts;
 
   private final UUID alice = UUID.randomUUID();
@@ -374,6 +382,9 @@ class DataRightsIT {
       case "BiDeviceSyncState" -> "deviceSyncState";
       case "BiUserMerchantCategory" -> "merchantChoices";
       case "BiUserBill" -> "bills";
+      case "BiCashWallet" -> "cashWallets";
+      case "BiCashWalletEntry" -> "cashWalletEntries";
+      case "BiCashWalletReview" -> "cashWalletReviews";
       default -> null;
     };
   }
@@ -612,6 +623,50 @@ class DataRightsIT {
             .alertType(com.moneyreserve.domain.BudgetAlertType.BILL_DUE)
             .amountAtRaise(new java.math.BigDecimal("1500.00"))
             .limitAtRaise(new java.math.BigDecimal("1500.00"))
+            .build());
+
+    // Cash wallet (V1.21.0): the wallet, one ledger entry, its balance check and an applied review.
+    com.moneyreserve.domain.BiCashWallet wallet =
+        cashWallets.save(
+            com.moneyreserve.domain.BiCashWallet.builder()
+                .id(UUID.randomUUID())
+                .userId(user)
+                .currency("LKR")
+                .activatedAt(now)
+                .balance(new java.math.BigDecimal("1000.00"))
+                .revision(2)
+                .createdAt(now)
+                .build());
+    com.moneyreserve.domain.BiCashWalletEntry entry =
+        cashEntries.save(
+            com.moneyreserve.domain.BiCashWalletEntry.builder()
+                .id(UUID.randomUUID())
+                .walletId(wallet.getId())
+                .userId(user)
+                .kind(com.moneyreserve.domain.BiCashWalletEntry.Kind.OPENING)
+                .amount(new java.math.BigDecimal("1000.00"))
+                .balanceAfter(new java.math.BigDecimal("1000.00"))
+                .revision(1)
+                .actor("user:" + user)
+                .createdAt(now)
+                .build());
+    cashReviews.save(
+        com.moneyreserve.domain.BiCashWalletReview.builder()
+            .id(UUID.randomUUID())
+            .walletId(wallet.getId())
+            .userId(user)
+            .entryId(entry.getId())
+            .dueAt(now.plusDays(7))
+            .build());
+    cashOperations.save(
+        com.moneyreserve.domain.BiCashWalletOperation.builder()
+            .id(UUID.randomUUID())
+            .userId(user)
+            .clientRef("fixture-" + user)
+            .requestHash("0".repeat(64))
+            .walletId(wallet.getId())
+            .revisionAfter(2)
+            .createdAt(now)
             .build());
   }
 }

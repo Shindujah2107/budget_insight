@@ -59,6 +59,19 @@ public enum ErrorCode {
   INSIGHTS_ACCOUNT_NOT_FOUND(
       "MR.TXN.E.003", HttpStatus.NOT_FOUND, "We couldn't find that account."),
 
+  // Cash wallet. The codes are the app's contract (IMPLEMENTATION.md), not the MR.* scheme.
+  CASH_STALE("CASH_STALE", HttpStatus.CONFLICT, "Your cash changed meanwhile. Please check the new amount."),
+  CASH_INSUFFICIENT(
+      "CASH_INSUFFICIENT", HttpStatus.CONFLICT, "Your cash wallet doesn't hold that much."),
+  CASH_NOT_ACTIVE(
+      "CASH_NOT_ACTIVE", HttpStatus.CONFLICT, "Set up your cash wallet first."),
+  CASH_INVALID(
+      "CASH_INVALID", HttpStatus.UNPROCESSABLE_ENTITY, "Please check the cash details."),
+  CASH_REFERENCE_REUSED(
+      "CASH_REFERENCE_REUSED",
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      "That cash review was already saved with different details."),
+
   // Bills
   INSIGHTS_BILL_NOT_FOUND("MR.BIL.E.001", HttpStatus.NOT_FOUND, "We couldn't find that bill."),
   INSIGHTS_BILL_INVALID(

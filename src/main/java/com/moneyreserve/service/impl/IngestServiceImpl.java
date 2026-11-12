@@ -87,6 +87,12 @@ public class IngestServiceImpl implements IngestService {
   /** Bills radar: re-checked once a payment commits. Optional so focused tests need not wire it. */
   @org.springframework.beans.factory.annotation.Autowired(required = false)
   private com.moneyreserve.service.BillService bills;
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private CashWalletService cash;
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private com.moneyreserve.repository.BiMessageTypeRepository messageTypes;
   private final IngestRateLimiter rateLimiter;
   private final BiTransactionRepository transactions;
   private final BiAccountRepository accounts;
@@ -448,6 +454,18 @@ public class IngestServiceImpl implements IngestService {
                   .idempotencyKey(message.storedKey())
                   .build());
 
+      if (cash != null) {
+        // An ATM withdrawal after the wallet was opened puts the cash in it (once: a duplicate
+        // never reaches here, and a transaction has at most one live wallet effect).
+        cash.sync(saved, false);
+        // A bank reversal of a withdrawal takes that cash back out.
+        if (messageTypes != null
+            && messageTypes.findById(message.messageType())
+                .map(t -> "REFUND_OR_REVERSAL".equals(t.getLogicalType()))
+                .orElse(false)) {
+          cash.linkBankReversal(saved);
+        }
+      }
       seenInBatch.put(message.storedKey(), saved.getId());
       touchedDates.add(message.txnDate());
       outcome.accepted++;
