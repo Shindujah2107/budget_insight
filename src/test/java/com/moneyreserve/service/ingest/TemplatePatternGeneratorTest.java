@@ -106,6 +106,14 @@ class TemplatePatternGeneratorTest {
         direction |= "DIRECTION".equals(x.field());
         ann.add(new TemplateSampleAnalyser.Annotation(x.start(), x.end(), x.field(), x.direction(), x.counterpartWords(), x.format(), x.ignoreKind()));
       }
+      if (ann.stream().noneMatch(x -> "MERCHANT".equals(x.field()))) {
+        // Nothing to suggest (e.g. the sender's name in brackets): mark it as an admin would.
+        String m = expectedMerchant(s.sms());
+        int at = m == null ? -1 : s.sms().indexOf(m);
+        assertTrue(at >= 0, s.bankCode() + " " + s.messageType() + ": no merchant suggested or known");
+        ann.removeIf(x -> x.start() < at + m.length() && at < x.end());
+        ann.add(new TemplateSampleAnalyser.Annotation(at, at + m.length(), "MERCHANT", null, null, null, null));
+      }
       JsonNode fixed = JSON.createObjectNode().put("currency", "LKR").put("direction", direction ? null : "DEBIT");
       ObjectNode spec = TemplateSampleAnalyser.buildSpec(s.sms(), ann, fixed, null, "ACCOUNT_TRANSACTION", "BANK", List.of("X"));
       TemplatePatternGenerator.Result r = TemplatePatternGenerator.generate(spec);
@@ -114,7 +122,19 @@ class TemplatePatternGeneratorTest {
       assertNotNull(v, s.bankCode() + " " + s.messageType() + " not read by " + r.pattern());
       checked++;
     }
-    assertEquals(12, checked);
+    assertEquals(19, checked);
+  }
+
+  /** The hand-checked merchant of a stored sample. */
+  private static String expectedMerchant(String sms) throws java.io.IOException {
+    try (java.io.InputStream in = TemplatePatternGeneratorTest.class.getResourceAsStream("/bank-sms/redacted-samples.json")) {
+      for (JsonNode n : JSON.readTree(in).path("samples")) {
+        if (sms.equals(n.path("sms").asText())) {
+          return n.path("expected").path("merchant").asText(null);
+        }
+      }
+    }
+    return null;
   }
 
   @Test

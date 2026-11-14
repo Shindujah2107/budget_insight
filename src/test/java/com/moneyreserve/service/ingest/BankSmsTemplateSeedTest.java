@@ -55,6 +55,9 @@ class BankSmsTemplateSeedTest {
   /** Templates added after the first seed, each from real messages. */
   private static final List<String> LATER =
       List.of("/db/migration/common/V1.20.0__combank_atm_template.sql");
+  /** Template drafts for admin review, as bi_config_change rows; checked like live ones. */
+  private static final List<String> DRAFTS =
+      List.of("/db/migration/common/V1.22.0__draft_bank_templates.sql");
   private static final String SAMPLES = "/bank-sms/redacted-samples.json";
   private static final LocalDate RECEIVED = LocalDate.of(2026, 9, 21);
 
@@ -62,6 +65,11 @@ class BankSmsTemplateSeedTest {
       Pattern.compile(
           "\\('([0-9a-f-]{36})'::uuid, '([^']+)', '([^']+)',\\s*\\$re\\$(.*?)\\$re\\$,"
               + "\\s*\\$fm\\$(.*?)\\$fm\\$::jsonb,\\s*(\\d+), (true|false)\\)",
+          Pattern.DOTALL);
+  private static final Pattern DRAFT_ROW =
+      Pattern.compile(
+          "\\('([0-9a-f-]{36})'::uuid, '([^']+)', '([^']+)',\\s*\\$re\\$(.*?)\\$re\\$,"
+              + "\\s*\\$fm\\$(.*?)\\$fm\\$::jsonb\\)",
           Pattern.DOTALL);
   private static final Pattern SENDER_ROW =
       Pattern.compile("\\('([0-9a-f-]{36})'::uuid, '([^']+)', '([^']+)', 'LK', (true|false)\\)");
@@ -189,7 +197,7 @@ class BankSmsTemplateSeedTest {
   void samplesParseToTheExpectedFields() throws IOException {
     List<Template> templates = allTemplates();
     JsonNode samples = samples().path("samples");
-    assertTrue(samples.size() >= 44, "sample set has been thinned out");
+    assertTrue(samples.size() >= 51, "sample set has been thinned out");
 
     List<String> failures = new ArrayList<>();
     Set<String> exercised = new HashSet<>();
@@ -231,7 +239,7 @@ class BankSmsTemplateSeedTest {
   void nonTransactionsMatchNothing() throws IOException {
     List<Template> templates = allTemplates();
     JsonNode negatives = samples().path("mustNotMatch");
-    assertTrue(negatives.size() >= 40, "must-not-match set has been thinned out");
+    assertTrue(negatives.size() >= 33, "must-not-match set has been thinned out");
     for (JsonNode n : negatives) {
       List<Template> hits = matching(templates, n.path("sms").asText());
       assertTrue(hits.isEmpty(), n.path("why").asText() + " matched " + hits.stream()
@@ -248,7 +256,7 @@ class BankSmsTemplateSeedTest {
         absent.add(t.bank() + " " + t.type());
       }
     }
-    assertEquals(Set.of("7010 ACCOUNT_TXN", "7083 ACCOUNT_TXN", "7083 ACCOUNT_CHARGE"), absent);
+    assertEquals(Set.of("7010 ACCOUNT_TXN", "7083 ACCOUNT_TXN", "7083 ACCOUNT_CHARGE", "7010 CASH_CHEQUE_DEBIT"), absent);
   }
 
   @Test
@@ -347,7 +355,48 @@ class BankSmsTemplateSeedTest {
     return out;
   }
 
-  /** The first seed plus every later template migration. */
+  @Test
+  @DisplayName("the review drafts (V1.22.0) are seven new bank + type keys with active senders")
+  void draftsAreNewKeys() throws IOException {
+    List<Template> drafts = drafts();
+    assertEquals(7, drafts.size(), "draft count");
+    Set<String> live = new HashSet<>();
+    List<Template> published = new ArrayList<>(templates(migration()));
+    for (String path : LATER) {
+      published.addAll(templates(resource(path)));
+    }
+    published.forEach(t -> live.add(t.bank() + " " + t.type()));
+    Map<String, String> senders = senders(migration());
+    Set<String> ids = new HashSet<>();
+    for (Template d : drafts) {
+      String key = d.bank() + " " + d.type();
+      assertTrue(ids.add(d.id()), "duplicate id " + d.id());
+      assertFalse(live.contains(key), key + " already has a seeded template");
+      d.map().path("senders").forEach(x ->
+          assertEquals(d.bank(), senders.get(x.asText()), key + ": sender " + x.asText()));
+    }
+  }
+
+  private static List<Template> drafts() throws IOException {
+    List<Template> out = new ArrayList<>();
+    for (String path : DRAFTS) {
+      Matcher m = DRAFT_ROW.matcher(resource(path));
+      while (m.find()) {
+        out.add(new Template(m.group(1), m.group(2), m.group(3), Pattern.compile(m.group(4)),
+            JSON.readTree(m.group(5)), 1, true));
+      }
+    }
+    return out;
+  }
+
+  private static String resource(String path) throws IOException {
+    try (InputStream in = BankSmsTemplateSeedTest.class.getResourceAsStream(path)) {
+      assertNotNull(in, path + " is not on the classpath");
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    }
+  }
+
+  /** The first seed, every later template migration, and the review drafts. */
   private static List<Template> allTemplates() throws IOException {
     List<Template> out = new ArrayList<>(templates(migration()));
     for (String path : LATER) {
@@ -356,6 +405,7 @@ class BankSmsTemplateSeedTest {
         out.addAll(templates(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)));
       }
     }
+    out.addAll(drafts());
     return out;
   }
 

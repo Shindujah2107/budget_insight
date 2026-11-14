@@ -251,6 +251,9 @@ public final class TemplateSampleAnalyser {
               .filter(x -> "DIRECTION".equals(x.field()) && x.start() > 1)
               .findFirst()
               .map(x -> new Suggestion(0, sample.substring(0, x.start()).stripTrailing().length(), "MERCHANT", 0.6, null, null, null, null))
+              // Only when nothing else was found before the direction word: "Inward CEFTS trf of
+              // LKR 2,000.00 (...) credited" has the amount there, and highlights may not overlap.
+              .filter(f -> out.stream().noneMatch(x -> x.start() < f.end()))
               .orElse(null);
     }
     if (merchant != null) {
