@@ -151,6 +151,9 @@ class DataRightsIT {
   private static final Set<String> NOT_CUSTOMER_SCOPED =
       Set.of(
           "BiComplianceEvent",
+          // Where a daily job stopped (V1.24.0): a job name, a date and a customer id it reached,
+          // nothing the customer wrote. Not exported; it is overwritten every day.
+          "BiJobCursor",
           // SMS format discovery. A daily count per hashed device and sender, and the shape of a
           // bank's message: neither has a user_id or anything the customer wrote.
           "BiUnmatchedSmsStat",

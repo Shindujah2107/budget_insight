@@ -48,6 +48,10 @@ public class BiUserBill {
   @Column(name = "custom_name", length = 64)
   private String customName;
 
+  /** The category the customer chose for this bill (V1.24.0); its payments are filed there. */
+  @Column(name = "category_id")
+  private UUID categoryId;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 16)
   private BillStatus status;

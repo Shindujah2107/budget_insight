@@ -20,4 +20,7 @@ public class BillsResponse {
   private String currency;
   /** True when Premium-only bill features are switched on (see the plan's free/Premium table). */
   private boolean premiumGate;
+
+  /** Bills can carry their own category (V1.24.0): the app asks for one when a bill is added. */
+  private boolean categoriesEnabled;
 }

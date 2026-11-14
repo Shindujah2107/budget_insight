@@ -21,4 +21,6 @@ public record UpdateBillRequest(
     @Min(0) @Max(14) Short remindDaysBefore,
     @DecimalMin("0.01") BigDecimal expectedAmount,
     @Pattern(regexp = "^(WEEKLY|MONTHLY|QUARTERLY|YEARLY)$") String cadence,
-    LocalDate nextDueOn) {}
+    LocalDate nextDueOn,
+    /** Change the bill's category (V1.24.0). */
+    java.util.UUID categoryId) {}

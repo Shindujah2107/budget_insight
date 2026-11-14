@@ -363,6 +363,24 @@ public class InsightsProperties {
     private int jumpPct = 30;
     /** Days after the due date before "missed?" is raised. */
     private int missedAfterDays = 5;
+
+    /**
+     * Each bill can have its own category (V1.24.0), asked when it is added and used when it is
+     * marked paid. Off: every bill paid by hand is filed under Bills &amp; utilities, as before.
+     */
+    private boolean categories = true;
+
+    /**
+     * With {@code premium-gate} on, bill categories become a Premium feature. Off (the default):
+     * they stay free even when the gate is on.
+     */
+    private boolean categoriesPremium = false;
+
+    /** BillsDailyJob: customers per page, and how long one run may take before it stops. */
+    private int dailyJobPageSize = 500;
+    private java.time.Duration dailyJobTimeLimit = java.time.Duration.ofMinutes(10);
+    /** Customers whose bills are all due further away than this are skipped by the daily job. */
+    private int dailyJobDueWithinDays = 15;
   }
 
   /**

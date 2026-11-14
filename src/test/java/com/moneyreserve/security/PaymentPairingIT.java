@@ -35,6 +35,7 @@ class PaymentPairingIT {
   @Autowired private TestRestTemplate rest;
   @Autowired private BiCategoryRepository categories;
   @Autowired private ObjectMapper json;
+  @Autowired private com.moneyreserve.config.InsightsProperties properties;
 
   private static final String API = "/api/insights";
   private final LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Colombo"));
@@ -241,5 +242,57 @@ class PaymentPairingIT {
     assertEquals(1, sms(user, key(), "7010", "ACCOUNT_TXN", "58000.00").path("accepted").asInt(), "another bank");
     assertEquals(id, sms(user, key(), "7056", "ACCOUNT_TXN", "58000.00").path("results").get(0).path("transactionId").asText());
     assertEquals(2, ledger(user).path("page").path("totalElements").asInt());
+  }
+
+  // ---- bill categories (V1.24.0) -------------------------------------------------------------
+
+  private String billWithCategory(UUID user, UUID category) throws Exception {
+    ResponseEntity<String> r =
+        call(user, HttpMethod.POST, "/bills",
+            "{\"name\":\"Rent\",\"expectedAmount\":58000,\"cadence\":\"MONTHLY\",\"nextDueOn\":\"" + today
+                + "\",\"categoryId\":\"" + category + "\"}");
+    assertEquals(201, r.getStatusCode().value(), r.getBody());
+    return data(r).path("id").asText();
+  }
+
+  @Test
+  @DisplayName("a bill's own category is used when it is marked paid")
+  void billCategoryUsed() throws Exception {
+    UUID user = consented();
+    UUID housing = ensure("HOUSING_QA", "Housing");
+    String bill = billWithCategory(user, housing);
+    JsonNode list = data(call(user, HttpMethod.GET, "/bills", null));
+    assertTrue(list.path("categoriesEnabled").asBoolean());
+    assertEquals(housing.toString(), list.path("bills").get(0).path("categoryId").asText());
+    JsonNode p = paid(user, bill, "");
+    assertEquals(housing.toString(), p.path("payment").path("transaction").path("categoryId").asText());
+  }
+
+  @Test
+  @DisplayName("with bill categories switched off, paid bills go to Bills & utilities as before")
+  void billCategoriesOff() throws Exception {
+    properties.getBills().setCategories(false);
+    try {
+      UUID user = consented();
+      UUID housing = ensure("HOUSING_QA", "Housing");
+      String bill = billWithCategory(user, housing);
+      JsonNode list = data(call(user, HttpMethod.GET, "/bills", null));
+      assertTrue(!list.path("categoriesEnabled").asBoolean());
+      assertTrue(list.path("bills").get(0).path("categoryId").isMissingNode());
+      assertEquals(bills.toString(), paid(user, bill, "").path("payment").path("transaction").path("categoryId").asText());
+    } finally {
+      properties.getBills().setCategories(true);
+    }
+  }
+
+  @Test
+  @DisplayName("an unknown category for a bill is refused")
+  void billCategoryValidated() throws Exception {
+    UUID user = consented();
+    ResponseEntity<String> r =
+        call(user, HttpMethod.POST, "/bills",
+            "{\"name\":\"Rent\",\"expectedAmount\":58000,\"cadence\":\"MONTHLY\",\"nextDueOn\":\"" + today
+                + "\",\"categoryId\":\"" + UUID.randomUUID() + "\"}");
+    assertEquals(400, r.getStatusCode().value(), r.getBody());
   }
 }

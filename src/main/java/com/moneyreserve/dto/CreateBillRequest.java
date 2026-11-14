@@ -16,4 +16,6 @@ public record CreateBillRequest(
     @NotNull @DecimalMin("0.01") BigDecimal expectedAmount,
     @NotNull @Pattern(regexp = "^(WEEKLY|MONTHLY|QUARTERLY|YEARLY)$") String cadence,
     @NotNull LocalDate nextDueOn,
-    @Min(0) @Max(14) Short remindDaysBefore) {}
+    @Min(0) @Max(14) Short remindDaysBefore,
+    /** The bill's category (V1.24.0), e.g. Rent → Housing; payments marked paid are filed there. */
+    java.util.UUID categoryId) {}

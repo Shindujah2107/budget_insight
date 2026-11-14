@@ -42,4 +42,18 @@ public interface BiUserBillRepository extends JpaRepository<BiUserBill, UUID> {
       "select distinct b.userId from BiUserBill b"
           + " where b.status <> com.moneyreserve.domain.BillStatus.DISMISSED")
   List<UUID> findLiveUserIds();
+
+  /**
+   * The daily check, one page at a time (V1.24.0): customers with a followed bill due by
+   * {@code dueBy} (overdue included), in id order, after {@code after}.
+   */
+  @Query(
+      "select distinct b.userId from BiUserBill b"
+          + " where b.status <> com.moneyreserve.domain.BillStatus.DISMISSED"
+          + " and b.nextDueOn <= :dueBy and b.userId > :after"
+          + " order by b.userId")
+  List<UUID> findDueUserIdsAfter(
+      @org.springframework.data.repository.query.Param("dueBy") java.time.LocalDate dueBy,
+      @org.springframework.data.repository.query.Param("after") UUID after,
+      org.springframework.data.domain.Pageable page);
 }

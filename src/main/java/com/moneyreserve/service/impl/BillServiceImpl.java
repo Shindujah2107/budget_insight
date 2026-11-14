@@ -143,6 +143,7 @@ public class BillServiceImpl implements BillService {
             .status(BillStatus.MANUAL)
             .cadence(BillCadence.valueOf(request.cadence()))
             .expectedAmount(request.expectedAmount().setScale(2, RoundingMode.HALF_UP))
+            .categoryId(chosenCategory(request.categoryId()))
             .nextDueOn(due)
             .anchorDay((short) (due.getDayOfMonth() == due.lengthOfMonth() ? 31 : due.getDayOfMonth()))
             .remindDaysBefore(remindDays(request.remindDaysBefore()))
@@ -183,6 +184,9 @@ public class BillServiceImpl implements BillService {
     }
     if (request.remindDaysBefore() != null) {
       bill.setRemindDaysBefore(remindDays(request.remindDaysBefore()));
+    }
+    if (request.categoryId() != null) {
+      bill.setCategoryId(chosenCategory(request.categoryId()));
     }
     if (manual) {
       if (request.expectedAmount() != null) {
@@ -248,7 +252,10 @@ public class BillServiceImpl implements BillService {
             .direction("DEBIT")
             .merchant(clip(bill.getDetectedName(), 128))
             .txnDate(paidOn)
-            .categoryId(request.categoryId() != null ? request.categoryId() : billCategory())
+            .categoryId(
+                request.categoryId() != null
+                    ? request.categoryId()
+                    : categoriesOn() && bill.getCategoryId() != null ? bill.getCategoryId() : billCategory())
             .clientRef(request.clientRef())
             .origin(request.originBankCode() != null ? PaymentPairing.ATTEMPT : PaymentPairing.BILL)
             .originBankCode(request.originBankCode())
@@ -296,6 +303,27 @@ public class BillServiceImpl implements BillService {
   static boolean paidThisCycle(BiUserBill bill) {
     return bill.getLastPaidOn() != null
         && !bill.getLastPaidOn().isBefore(bill.getNextDueOn().minusDays(PAID_EARLY_DAYS));
+  }
+
+  /**
+   * Bill categories (V1.24.0): on unless switched off, and when they are a Premium feature, only
+   * while the Premium gate is open.
+   */
+  private boolean categoriesOn() {
+    InsightsProperties.Bills config = properties.getBills();
+    return config.isCategories() && (!config.isCategoriesPremium() || premiumFeature());
+  }
+
+  /** A category the customer picked for a bill: an active one, and only while categories are on. */
+  private UUID chosenCategory(UUID categoryId) {
+    if (categoryId == null || !categoriesOn()) {
+      return null;
+    }
+    return categories
+        .findById(categoryId)
+        .filter(c -> Boolean.TRUE.equals(c.getIsActive()))
+        .map(c -> c.getId())
+        .orElseThrow(() -> new BudgetInsightsException(ErrorCode.INSIGHTS_BILL_INVALID));
   }
 
   /** Bills & utilities, else Other: a bill paid by hand is categorised like its kind. */
@@ -442,6 +470,7 @@ public class BillServiceImpl implements BillService {
         .monthlyTotal(mapper.money(monthly.setScale(2, RoundingMode.HALF_UP)))
         .currency(properties.getCurrency())
         .premiumGate(properties.getBills().isPremiumGate())
+        .categoriesEnabled(categoriesOn())
         .build();
   }
 
@@ -478,6 +507,7 @@ public class BillServiceImpl implements BillService {
         .colourHex(biller == null ? null : biller.getColourHex())
         .currency(properties.getCurrency())
         .paidThisCycle(paidThisCycle(b))
+        .categoryId(categoriesOn() ? b.getCategoryId() : null)
         .build();
   }
 

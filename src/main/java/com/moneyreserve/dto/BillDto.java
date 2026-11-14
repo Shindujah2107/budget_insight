@@ -48,4 +48,7 @@ public class BillDto {
    * found bill the app also asks only when the due date has passed without a payment.
    */
   private Boolean paidThisCycle;
+
+  /** The bill's own category (V1.24.0), when bill categories are on and one was chosen. */
+  private UUID categoryId;
 }
