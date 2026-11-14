@@ -7,8 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.moneyreserve.config.InsightsProperties;
+import com.moneyreserve.domain.BiBank;
+import com.moneyreserve.repository.BiBankRepository;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +33,33 @@ import org.springframework.test.context.ActiveProfiles;
 class AdminBankIT {
 
   @Autowired private TestRestTemplate rest;
+  @Autowired private BiBankRepository bankRows;
+  @Autowired private InsightsProperties properties;
+
+  /**
+   * The configured banks, as BankRegistryBootstrap seeds them at start-up. Re-seeded here because
+   * every test context shares one in-memory database: a later context started with Budget
+   * Insights off (which seeds nothing) recreates the tables while this cached context still uses
+   * them, and the outcome then depended on which test class ran first.
+   */
+  @BeforeEach
+  void seedConfiguredBanks() {
+    properties
+        .getAdmin()
+        .getBanks()
+        .forEach(
+            (code, name) -> {
+              if (!bankRows.existsById(code)) {
+                bankRows.save(
+                    BiBank.builder()
+                        .bankCode(code)
+                        .bankName(name)
+                        .isActive(true)
+                        .createdAt(OffsetDateTime.now())
+                        .build());
+              }
+            });
+  }
 
   /**
    * A fresh 4-digit code per call. The Spring context (and its H2 database) is shared by the tests
