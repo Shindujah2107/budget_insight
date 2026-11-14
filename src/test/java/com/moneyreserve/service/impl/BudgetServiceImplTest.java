@@ -33,6 +33,7 @@ import com.moneyreserve.repository.BiBudgetPolicyRepository;
 import com.moneyreserve.repository.BiBudgetRepository;
 import com.moneyreserve.repository.BiCategoryRepository;
 import com.moneyreserve.repository.BiTransactionRepository;
+import com.moneyreserve.service.BudgetAlertService;
 import com.moneyreserve.service.BudgetService;
 import com.moneyreserve.service.InsightsMapper;
 import com.moneyreserve.service.InsightsQueryService;
@@ -85,6 +86,8 @@ class BudgetServiceImplTest {
   @Mock private BiTransactionRepository transactions;
   @Mock private BiCategoryRepository categories;
   @Mock private ObjectProvider<BudgetService> self;
+  @Mock private ObjectProvider<BudgetAlertService> alerting;
+  @Mock private BudgetAlertService alertService;
 
   private InsightsProperties properties;
   private BudgetServiceImpl service;
@@ -113,10 +116,12 @@ class BudgetServiceImplTest {
             limits,
             transactions,
             categories,
-            self);
+            self,
+            alerting);
     // Stands in for the Spring proxy: in production this hop crosses a transaction boundary, and
     // in a unit test it is the same object.
     lenient().when(self.getObject()).thenReturn(service);
+    lenient().when(alerting.getIfAvailable()).thenReturn(alertService);
   }
 
   // ---------------------------------------------------------------------------------
@@ -258,6 +263,18 @@ class BudgetServiceImplTest {
     order.verify(limits).deleteAllByBudgetId(any());
     order.verify(limits).flush();
     order.verify(limits).saveAll(anyList());
+  }
+
+  @Test
+  @DisplayName("saving a budget checks it against what is already spent (alerts raised now)")
+  void savingABudgetEvaluatesAlerts() {
+    resolvesPeriod();
+    when(budgets.findByUserIdAndPeriodStart(USER, PERIOD.start())).thenReturn(Optional.empty());
+    savesBudget();
+
+    service.upsert(caller, upsertWith("1000.00"));
+
+    verify(alertService).evaluate(caller, PERIOD.start());
   }
 
   @Test

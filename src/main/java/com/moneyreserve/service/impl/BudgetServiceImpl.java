@@ -14,6 +14,7 @@ import com.moneyreserve.repository.BiBudgetCategoryLimitRepository;
 import com.moneyreserve.repository.BiBudgetRepository;
 import com.moneyreserve.repository.BiCategoryRepository;
 import com.moneyreserve.repository.BiTransactionRepository;
+import com.moneyreserve.service.BudgetAlertService;
 import com.moneyreserve.service.BudgetService;
 import com.moneyreserve.service.InsightsMapper;
 import com.moneyreserve.service.InsightsQueryService;
@@ -86,6 +87,12 @@ public class BudgetServiceImpl implements BudgetService {
    * bean does not have to be constructed while it is still being constructed.
    */
   private final ObjectProvider<BudgetService> self;
+
+  /**
+   * Checks the saved budget against what is already spent, so a target set below this month's
+   * spending raises its alert now rather than at the next transaction.
+   */
+  private final ObjectProvider<BudgetAlertService> budgetAlerts;
 
   // ---------------------------------------------------------------------------------
   // Summary
@@ -255,6 +262,11 @@ public class BudgetServiceImpl implements BudgetService {
         period,
         stored.size(),
         saved.getRolledFromId() != null);
+
+    BudgetAlertService alerting = budgetAlerts.getIfAvailable();
+    if (alerting != null) {
+      alerting.evaluate(caller, period.start());
+    }
 
     return toResponse(period, saved, stored);
   }
