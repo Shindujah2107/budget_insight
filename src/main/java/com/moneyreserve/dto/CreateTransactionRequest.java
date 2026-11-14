@@ -75,4 +75,20 @@ public class CreateTransactionRequest {
   /** {@code CASH_WALLET}: pay from the cash wallet (it must be active and hold enough). */
   @Pattern(regexp = "^CASH_WALLET$", message = "Please choose how this was paid.")
   private String paymentSource;
+
+  /**
+   * {@code ATTEMPT}: the customer confirms that a payment their bank announced as attempted went
+   * through (V1.23.0). Paid from a bank account, never the cash wallet; a bank SMS for the same
+   * payment, stored before or after, is paired with it instead of being counted twice.
+   */
+  @Pattern(regexp = "^ATTEMPT$", message = "Please choose where this payment came from.")
+  private String origin;
+
+  /** With {@code origin}: the bank that announced the attempt. */
+  @Pattern(regexp = "^[A-Z0-9]{2,16}$", message = "Please choose a bank.")
+  private String originBankCode;
+
+  /** Set by the bills service only (never read from a request): the bill this payment paid. */
+  @com.fasterxml.jackson.annotation.JsonIgnore
+  private UUID userBillId;
 }

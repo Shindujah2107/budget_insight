@@ -122,7 +122,7 @@ class TemplatePatternGeneratorTest {
       assertNotNull(v, s.bankCode() + " " + s.messageType() + " not read by " + r.pattern());
       checked++;
     }
-    assertEquals(19, checked);
+    assertEquals(20, checked);
   }
 
   /** The hand-checked merchant of a stored sample. */

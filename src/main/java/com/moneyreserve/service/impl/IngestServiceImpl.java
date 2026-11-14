@@ -93,6 +93,10 @@ public class IngestServiceImpl implements IngestService {
 
   @org.springframework.beans.factory.annotation.Autowired(required = false)
   private com.moneyreserve.repository.BiMessageTypeRepository messageTypes;
+  /** Pairs a bank SMS with a payment the customer recorded (V1.23.0). Optional for focused tests. */
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private PaymentPairing pairing;
+
   private final IngestRateLimiter rateLimiter;
   private final BiTransactionRepository transactions;
   private final BiAccountRepository accounts;
@@ -103,6 +107,8 @@ public class IngestServiceImpl implements IngestService {
 
   private static final String ACCEPTED = "ACCEPTED";
   private static final String DUPLICATE = "DUPLICATE";
+  /** Message type of the bank's "attempted, use code …" SMS (V1.23.0): never ingested. */
+  static final String PAYMENT_ATTEMPT = "PAYMENT_ATTEMPT";
   private static final String REJECTED = "REJECTED";
 
   /**
@@ -353,6 +359,12 @@ public class IngestServiceImpl implements IngestService {
    */
   private String requireInScope(String rawMessageType) {
     String messageType = PayloadNormaliser.requireMessageType(rawMessageType);
+    // An "attempted, use code …" message is only ever a question on the phone: it is never a
+    // transaction, whatever a device sends.
+    if (PAYMENT_ATTEMPT.equals(messageType)) {
+      throw new BudgetInsightsException(
+          ErrorCode.INSIGHTS_INGEST_MESSAGE_INVALID, "A payment attempt is not a transaction.");
+    }
     List<String> allowed = properties.getIngest().getAcceptedMessageTypes();
     if (allowed == null || allowed.isEmpty() || allowed.contains(messageType)) {
       return messageType;
@@ -387,6 +399,7 @@ public class IngestServiceImpl implements IngestService {
     Set<UUID> knownTemplates = knownTemplateIds(prepared);
 
     Map<String, UUID> seenInBatch = new HashMap<>();
+    Set<UUID> pairedInBatch = new java.util.HashSet<>();
     Set<LocalDate> touchedDates = new LinkedHashSet<>();
     Map<String, BiAccount> accountsInBatch = new HashMap<>();
     int unknownTemplates = 0;
@@ -414,6 +427,39 @@ public class IngestServiceImpl implements IngestService {
 
       // ---- Step 4. Account resolution from the masked tail.
       BiAccount account = resolveAccount(caller, message, accountsInBatch);
+
+      // ---- Step 4b. The customer already recorded this payment (confirmed an attempt or marked
+      // a bill paid): the SMS is paired with that row instead of being counted a second time.
+      if (pairing != null && message.direction() == TxnDirection.DEBIT) {
+        Optional<BiTransaction> recorded =
+            pairing.recordedFor(
+                userId, message.bankCode(), message.amount(), message.txnDate(), pairedInBatch);
+        if (recorded.isPresent()) {
+          BiTransaction row = recorded.get();
+          row.setLinkedKey(message.storedKey());
+          if (row.getAccountId() == null && account != null) {
+            row.setAccountId(account.getId());
+          }
+          transactions.save(row);
+          pairedInBatch.add(row.getId());
+          seenInBatch.put(message.storedKey(), row.getId());
+          touchedDates.add(row.getTxnDate());
+          outcome.duplicates++;
+          results[message.index()] =
+              IngestResultItem.builder()
+                  .idempotencyKey(message.deviceKey())
+                  .status(DUPLICATE)
+                  .transactionId(row.getId())
+                  .build();
+          log.info(
+              "Insights message paired with a recorded payment txnId={} userId={} bank={} type={}",
+              row.getId(),
+              userId,
+              message.bankCode(),
+              message.messageType());
+          continue;
+        }
+      }
 
       // ---- Step 6. Categorisation. Both columns, always: auto_category_id is what the merchant
       // map is judged on later, and it has to survive the customer correcting the row.
@@ -452,6 +498,7 @@ public class IngestServiceImpl implements IngestService {
                   .source(source)
                   .parserTemplateId(templateId)
                   .idempotencyKey(message.storedKey())
+                  .originBankCode(message.bankCode())
                   .build());
 
       if (cash != null) {
@@ -683,6 +730,10 @@ public class IngestServiceImpl implements IngestService {
     Map<String, BiTransaction> byKey = new HashMap<>();
     for (BiTransaction txn : transactions.findAllByUserIdAndIdempotencyKeyIn(userId, keys)) {
       byKey.put(txn.getIdempotencyKey(), txn);
+    }
+    // A bank SMS already paired with a payment the customer recorded is represented by that row.
+    for (BiTransaction txn : transactions.findAllByUserIdAndLinkedKeyIn(userId, keys)) {
+      byKey.putIfAbsent(txn.getLinkedKey(), txn);
     }
     return byKey;
   }

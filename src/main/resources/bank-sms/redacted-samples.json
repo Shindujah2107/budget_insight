@@ -597,6 +597,18 @@
         "txnDate": "2026-07-09",
         "maskedTail": "5845"
       }
+    },
+    {
+      "bankCode": "7056",
+      "messageType": "PAYMENT_ATTEMPT",
+      "sms": "ComBank Digital-Transfer to Other Banks LKR 6,800.00 attempted. Please use code xxxxxx to approve. Do NOT share this number with anyone. AbCdEfGhIjK",
+      "expected": {
+        "amount": "6800.00",
+        "currency": "LKR",
+        "direction": "DEBIT",
+        "merchant": "Transfer to Other Banks",
+        "maskedTail": null
+      }
     }
   ],
   "mustNotMatch": [

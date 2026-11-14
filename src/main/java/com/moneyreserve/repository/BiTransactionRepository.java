@@ -470,4 +470,57 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
       """)
   List<Object[]> countByBankBetween(
       @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+  // ---- Recorded payments and bank SMS paired up (V1.23.0) ---------------------------------
+
+  List<BiTransaction> findAllByUserIdAndLinkedKeyIn(UUID userId, Set<String> linkedKeys);
+
+  /**
+   * Payments the customer recorded (a confirmed attempt or a bill marked paid) that no bank SMS
+   * has been paired with yet, for one amount and date window, oldest first.
+   */
+  @Query(
+      """
+      SELECT t FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.origin IS NOT NULL
+        AND t.linkedKey IS NULL
+        AND t.deletedAt IS NULL
+        AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
+        AND t.amount = :amount
+        AND t.txnDate BETWEEN :from AND :to
+      ORDER BY t.txnDate ASC, t.createdAt ASC
+      """)
+  List<BiTransaction> findUnpairedRecorded(
+      @Param("userId") UUID userId,
+      @Param("amount") java.math.BigDecimal amount,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to);
+
+  /**
+   * Bank SMS payments not yet paired with a recorded payment or a bill, for one amount and date
+   * window, oldest first.
+   */
+  @Query(
+      """
+      SELECT t FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.source <> com.moneyreserve.domain.TxnSource.MANUAL
+        AND t.origin IS NULL
+        AND t.linkedKey IS NULL
+        AND t.userBillId IS NULL
+        AND t.movement IS NULL
+        AND t.deletedAt IS NULL
+        AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
+        AND t.amount = :amount
+        AND t.txnDate BETWEEN :from AND :to
+      ORDER BY t.txnDate ASC, t.createdAt ASC
+      """)
+  List<BiTransaction> findUnpairedSms(
+      @Param("userId") UUID userId,
+      @Param("amount") java.math.BigDecimal amount,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to);
+
+  List<BiTransaction> findAllByUserIdAndUserBillIdAndDeletedAtIsNull(UUID userId, UUID userBillId);
 }

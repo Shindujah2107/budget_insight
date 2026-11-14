@@ -57,6 +57,10 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
   /** The cash wallet: every change to a cash-paid row moves it, in this same transaction. */
   @org.springframework.beans.factory.annotation.Autowired(required = false)
   private CashWalletService cash;
+
+  /** Recorded payments and bank SMS for the same payment are paired, never counted twice. */
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private PaymentPairing pairing;
   private final BiTransactionRepository transactions;
   private final BiTransactionAuditRepository audits;
   private final BiAccountRepository accounts;
@@ -99,6 +103,28 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
           .build();
     }
 
+    // A recorded payment (a confirmed attempt, a bill marked paid) that was paired with a bank SMS
+    // the first time round: the retry gets that SMS row back.
+    String origin = request.getOrigin();
+    if (origin != null) {
+      Optional<BiTransaction> paired =
+          transactions.findAllByUserIdAndLinkedKeyIn(userId, java.util.Set.of(idempotencyKey)).stream()
+              .findFirst();
+      if (paired.isPresent()) {
+        return paired(userId, paired.get(), from, to);
+      }
+      if (!"DEBIT".equals(request.getDirection()) || request.getPaymentSource() != null) {
+        throw new BudgetInsightsException(ErrorCode.INSIGHTS_TXN_NOT_EDITABLE);
+      }
+      Optional<BiTransaction> sms =
+          pairing == null
+              ? Optional.empty()
+              : pairing.smsFor(userId, request.getOriginBankCode(), request.getAmount(), txnDate);
+      if (sms.isPresent()) {
+        return pairWithStoredSms(caller, sms.get(), request, idempotencyKey, from, to);
+      }
+    }
+
     // What the engine would have said, kept whether or not the customer overrode it.
     CategorisationService.Decision decision =
         categorisation.decide(
@@ -118,6 +144,7 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     // into the wallet, never an expense paid from it.
     String paymentSource = null;
     if (cash != null
+        && origin == null
         && cash.paysFromWallet(
             userId, currency, request.getPaymentSource(), account == null ? null : account.getId())) {
       if (BiCategory.CASH_WITHDRAWAL_CODE.equals(category.getCode())) {
@@ -150,6 +177,9 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
             .source(TxnSource.MANUAL)
             .idempotencyKey(idempotencyKey)
             .paymentSource(paymentSource)
+            .origin(origin)
+            .originBankCode(origin == null ? null : request.getOriginBankCode())
+            .userBillId(request.getUserBillId())
             .build();
 
     BiTransaction saved = transactions.save(txn);
@@ -205,6 +235,55 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
       throw new BudgetInsightsException(ErrorCode.INSIGHTS_TXN_NOT_EDITABLE);
     }
     txn.setMovement(CashWalletService.OWN_ACCOUNT);
+  }
+
+  /**
+   * The customer recorded a payment the bank had already sent an SMS for: the SMS row is that
+   * payment. It takes the customer's category and bill, and the recorded payment's key, so a retry
+   * is a duplicate; nothing new is counted.
+   */
+  private TransactionMutationResponse pairWithStoredSms(
+      Caller caller,
+      BiTransaction sms,
+      CreateTransactionRequest request,
+      String idempotencyKey,
+      LocalDate from,
+      LocalDate to) {
+    UUID userId = caller.userId();
+    UUID before = sms.getCategoryId();
+    sms.setLinkedKey(idempotencyKey);
+    if (request.getUserBillId() != null) {
+      sms.setUserBillId(request.getUserBillId());
+    }
+    if (request.getCategoryId() != null && !request.getCategoryId().equals(before)) {
+      sms.setCategoryId(queries.requireCategory(request.getCategoryId()).getId());
+      sms.setIsUserCategorised(Boolean.TRUE);
+      sms.setCategorySource(CategorySource.USER);
+    }
+    BiTransaction saved = transactions.save(sms);
+    if (!java.util.Objects.equals(before, saved.getCategoryId())) {
+      audit(saved, AuditAction.RECATEGORISE, before, saved.getCategoryId(), userId);
+    }
+    invalidate(userId, saved.getTxnDate());
+    budgetAlerts.evaluate(caller, saved.getTxnDate());
+    if (bills != null) {
+      bills.refreshAfterCommit(userId);
+    }
+    log.info(
+        "Insights recorded payment paired with a stored bank SMS txnId={} userId={}",
+        saved.getId(),
+        userId);
+    return paired(userId, saved, from, to);
+  }
+
+  /** The bank SMS row a recorded payment turned out to be: flagged as a duplicate, not a new row. */
+  private TransactionMutationResponse paired(UUID userId, BiTransaction txn, LocalDate from, LocalDate to) {
+    transactions.flush();
+    return TransactionMutationResponse.builder()
+        .transaction(mapper.toDto(txn, accountOf(userId, txn.getAccountId())))
+        .breakdown(queries.breakdown(userId, periodFor(from, to, txn.getTxnDate())))
+        .duplicate(Boolean.TRUE)
+        .build();
   }
 
   private static String merchantKey(String merchant) {

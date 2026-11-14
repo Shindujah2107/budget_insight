@@ -54,7 +54,9 @@ class BankSmsTemplateSeedTest {
   private static final String MIGRATION = "/db/migration/common/V1.3.0__bank_sms_parser_seed.sql";
   /** Templates added after the first seed, each from real messages. */
   private static final List<String> LATER =
-      List.of("/db/migration/common/V1.20.0__combank_atm_template.sql");
+      List.of(
+          "/db/migration/common/V1.20.0__combank_atm_template.sql",
+          "/db/migration/common/V1.23.0__payment_attempts.sql");
   /** Template drafts for admin review, as bi_config_change rows; checked like live ones. */
   private static final List<String> DRAFTS =
       List.of("/db/migration/common/V1.22.0__draft_bank_templates.sql");
@@ -197,7 +199,7 @@ class BankSmsTemplateSeedTest {
   void samplesParseToTheExpectedFields() throws IOException {
     List<Template> templates = allTemplates();
     JsonNode samples = samples().path("samples");
-    assertTrue(samples.size() >= 51, "sample set has been thinned out");
+    assertTrue(samples.size() >= 52, "sample set has been thinned out");
 
     List<String> failures = new ArrayList<>();
     Set<String> exercised = new HashSet<>();
@@ -353,6 +355,24 @@ class BankSmsTemplateSeedTest {
       out.put(m.group(3), m.group(2));
     }
     return out;
+  }
+
+  @Test
+  @DisplayName("a payment-attempt template is kind ATTEMPT and stops before the code")
+  void attemptTemplatesNeverReadTheCode() throws IOException {
+    int attempts = 0;
+    for (Template t : allTemplates()) {
+      if (!"PAYMENT_ATTEMPT".equals(t.type())) {
+        assertFalse("ATTEMPT".equals(t.map().path("kind").asText()), t.type() + " marked ATTEMPT");
+        continue;
+      }
+      attempts++;
+      assertEquals("ATTEMPT", t.map().path("kind").asText(), t.bank() + " attempt kind");
+      String p = t.pattern().pattern();
+      assertTrue(p.endsWith("attempted\\."), "the match must end at 'attempted.': " + p);
+      assertFalse(p.toLowerCase(Locale.ROOT).contains("code"), "the pattern must not reach the code");
+    }
+    assertEquals(1, attempts);
   }
 
   @Test

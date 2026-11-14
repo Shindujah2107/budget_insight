@@ -78,6 +78,16 @@ public class BillsController {
     return refused != null ? refused : ok(bills.update(caller, billId, request));
   }
 
+  @Operation(summary = "Mark this cycle of a bill paid: records the payment once, or pairs it with the bank SMS")
+  @PostMapping("/{billId}/paid")
+  public ResponseEntity<?> paid(
+      @AuthenticationPrincipal Caller caller,
+      @PathVariable UUID billId,
+      @Valid @RequestBody com.moneyreserve.dto.MarkBillPaidRequest request) {
+    ResponseEntity<?> refused = guard(caller);
+    return refused != null ? refused : ok(bills.markPaid(caller, billId, request));
+  }
+
   @Operation(summary = "Remove a bill added by hand, or mark a found one not a bill")
   @DeleteMapping("/{billId}")
   public ResponseEntity<?> delete(@AuthenticationPrincipal Caller caller, @PathVariable UUID billId) {

@@ -24,6 +24,10 @@ public interface BillService {
   /** Removes a bill added by hand; any other is marked "not a bill". */
   BillsResponse delete(Caller caller, UUID billId);
 
+  /** Records this cycle's payment of a bill once (V1.23.0). */
+  com.moneyreserve.dto.BillPaidResponse markPaid(
+      Caller caller, UUID billId, com.moneyreserve.dto.MarkBillPaidRequest request);
+
   /**
    * Re-detects one customer's bills from their stored payments and raises any due, jumped or
    * missed alert. Joins the caller's transaction.

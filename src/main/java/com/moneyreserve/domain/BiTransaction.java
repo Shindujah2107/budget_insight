@@ -121,6 +121,34 @@ public class BiTransaction {
   @Column(name = "movement", length = 24)
   private String movement;
 
+  /**
+   * Where a payment the customer recorded came from (V1.23.0): {@code ATTEMPT} when they confirmed
+   * that a payment their bank announced as attempted went through, {@code BILL} when they marked a
+   * bill paid. Null for everything else. Such a row waits for the bank's own SMS, which is then
+   * linked to it instead of being counted again.
+   */
+  @Column(name = "origin", length = 16)
+  private String origin;
+
+  /**
+   * The bank (V1.23.0): for a recorded payment, the bank that announced the attempt, when known;
+   * for a bank SMS, the bank it came from. Used to pair the two.
+   */
+  @Column(name = "origin_bank_code", length = 16)
+  private String originBankCode;
+
+  /** The bill this payment paid (V1.23.0). */
+  @Column(name = "user_bill_id")
+  private UUID userBillId;
+
+  /**
+   * The idempotency key of the bank SMS or confirmed payment this row was matched with
+   * (V1.23.0): set on both sides, so one SMS pairs with one recorded payment and a resent SMS
+   * stays a duplicate.
+   */
+  @Column(name = "linked_key", length = 128)
+  private String linkedKey;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 

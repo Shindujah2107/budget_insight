@@ -78,6 +78,16 @@ public class BillServiceImpl implements BillService {
   private final PlatformTransactionManager transactionManager;
   private final BillDetector detector = new BillDetector();
 
+  /** Records the payment when a bill is marked paid; resolved on use (it also calls back here). */
+  private final org.springframework.beans.factory.ObjectProvider<com.moneyreserve.service.InsightsTransactionService>
+      transactionService;
+
+  /** A payment this close before the due date already pays that cycle. */
+  static final int PAID_EARLY_DAYS = 7;
+
+  /** How long after its due date an unpaid bill added by hand still asks "Did you pay it?". */
+  static final int ASK_DAYS_AFTER_DUE = 10;
+
   @Override
   @Transactional
   public BillsResponse list(Caller caller) {
@@ -208,6 +218,95 @@ public class BillServiceImpl implements BillService {
     return response(caller.userId());
   }
 
+  /**
+   * Marks this cycle of a bill paid, once (V1.23.0). The payment is recorded in the bill's
+   * category and linked to the bill; if the bank's SMS for it is already stored, that SMS is the
+   * payment instead (paired, nothing added). A cycle already paid records nothing.
+   */
+  @Override
+  @Transactional
+  public com.moneyreserve.dto.BillPaidResponse markPaid(
+      Caller caller, UUID billId, com.moneyreserve.dto.MarkBillPaidRequest request) {
+    BiUserBill bill = owned(caller, billId);
+    if (bill.getStatus() == BillStatus.DISMISSED) {
+      throw new BudgetInsightsException(ErrorCode.INSIGHTS_BILL_NOT_FOUND);
+    }
+    LocalDate paidOn = request.paidOn() == null ? today() : request.paidOn();
+    if (paidThisCycle(bill) || paidRecently(bill, paidOn)) {
+      log.info("Insights bill already paid this cycle userId={} billId={}", caller.userId(), billId);
+      return com.moneyreserve.dto.BillPaidResponse.builder()
+          .alreadyPaid(Boolean.TRUE)
+          .bill(toDto(bill, billerById(), today()))
+          .build();
+    }
+    BigDecimal amount =
+        (request.amount() == null ? bill.getExpectedAmount() : request.amount()).setScale(2, RoundingMode.HALF_UP);
+    com.moneyreserve.dto.CreateTransactionRequest payment =
+        com.moneyreserve.dto.CreateTransactionRequest.builder()
+            .amount(amount)
+            .currency(properties.getCurrency())
+            .direction("DEBIT")
+            .merchant(clip(bill.getDetectedName(), 128))
+            .txnDate(paidOn)
+            .categoryId(request.categoryId() != null ? request.categoryId() : billCategory())
+            .clientRef(request.clientRef())
+            .origin(request.originBankCode() != null ? PaymentPairing.ATTEMPT : PaymentPairing.BILL)
+            .originBankCode(request.originBankCode())
+            .userBillId(bill.getId())
+            .build();
+    com.moneyreserve.dto.TransactionMutationResponse recorded =
+        transactionService.getObject().create(caller, payment, null, null);
+    if (bill.getStatus() == BillStatus.MANUAL) {
+      bill.setLastPaidOn(paidOn);
+      bill.setLastAmount(amount);
+      bill.setPaymentCount((short) Math.min(bill.getPaymentCount() + 1, Short.MAX_VALUE));
+      while (!bill.getNextDueOn().isAfter(paidOn.plusDays(PAID_EARLY_DAYS))) {
+        bill.setNextDueOn(advance(bill));
+      }
+      bill.setUpdatedAt(OffsetDateTime.now());
+      bill = bills.save(bill);
+    }
+    refreshAfterCommit(caller.userId());
+    log.info("Insights bill marked paid userId={} billId={}", caller.userId(), billId);
+    return com.moneyreserve.dto.BillPaidResponse.builder()
+        .payment(recorded)
+        .bill(toDto(bill, billerById(), today()))
+        .build();
+  }
+
+  /**
+   * A payment of this bill less than most of a cycle before {@code paidOn}: a second "Paid" (from
+   * another phone, or tapped twice) is the same cycle, not next month's rent paid early.
+   */
+  static boolean paidRecently(BiUserBill bill, LocalDate paidOn) {
+    if (bill.getLastPaidOn() == null) {
+      return false;
+    }
+    int minGap =
+        switch (bill.getCadence()) {
+          case WEEKLY -> 4;
+          case MONTHLY -> 20;
+          case QUARTERLY -> 60;
+          case YEARLY -> 300;
+        };
+    return ChronoUnit.DAYS.between(bill.getLastPaidOn(), paidOn) < minGap;
+  }
+
+  /** Paid on, or no more than a week before, the date it is due. */
+  static boolean paidThisCycle(BiUserBill bill) {
+    return bill.getLastPaidOn() != null
+        && !bill.getLastPaidOn().isBefore(bill.getNextDueOn().minusDays(PAID_EARLY_DAYS));
+  }
+
+  /** Bills & utilities, else Other: a bill paid by hand is categorised like its kind. */
+  private UUID billCategory() {
+    return categories
+        .findByCodeAndIsActiveTrue("BILLS_UTILITIES")
+        .or(() -> categories.findByCodeAndIsActiveTrue(BiCategory.OTHER_CODE))
+        .map(c -> c.getId())
+        .orElse(null);
+  }
+
   @Override
   @Transactional
   public void refresh(UUID userId, LocalDate today) {
@@ -265,7 +364,10 @@ public class BillServiceImpl implements BillService {
         bills.delete(b); // no longer looks recurring and was never confirmed
         continue;
       }
-      if (b.getStatus() == BillStatus.MANUAL && today.isAfter(b.getNextDueOn())) {
+      // A bill added by hand stays on its due date for a few days so the app can ask "Did you pay
+      // it?"; marking it paid moves it on at once (markPaid). Unanswered, it moves on by itself.
+      if (b.getStatus() == BillStatus.MANUAL
+          && today.isAfter(b.getNextDueOn().plusDays(ASK_DAYS_AFTER_DUE))) {
         while (today.isAfter(b.getNextDueOn())) {
           b.setNextDueOn(advance(b));
         }
@@ -375,6 +477,7 @@ public class BillServiceImpl implements BillService {
         .iconKey(biller == null ? null : biller.getIconKey())
         .colourHex(biller == null ? null : biller.getColourHex())
         .currency(properties.getCurrency())
+        .paidThisCycle(paidThisCycle(b))
         .build();
   }
 

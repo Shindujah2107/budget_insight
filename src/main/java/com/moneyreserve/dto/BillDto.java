@@ -42,4 +42,10 @@ public class BillDto {
   private String iconKey;
   private String colourHex;
   private String currency;
+
+  /**
+   * True when this cycle is already paid (V1.23.0): no "Did you pay it?" for this due date. For a
+   * found bill the app also asks only when the due date has passed without a payment.
+   */
+  private Boolean paidThisCycle;
 }

@@ -797,6 +797,41 @@
           }
         },
         {
+          "name": "Mark a bill paid (records the payment once, or pairs it with the bank SMS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}/paid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}",
+                "paid"
+              ]
+            },
+            "description": "Absent fields are left alone. name (blank = back to the detected name), confirm, dismiss (not a bill), remindDaysBefore 0-14; expectedAmount, cadence and nextDueOn only for bills added by hand.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientRef\": \"bill-rent-2026-12\",\n  \"paidOn\": \"2026-12-01\",\n  \"amount\": 58000.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Remove a bill",
           "request": {
             "method": "DELETE",
