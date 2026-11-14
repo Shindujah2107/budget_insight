@@ -66,6 +66,10 @@ public class InsightsMapper {
         .categorySource(txn.getCategorySource() == null ? null : txn.getCategorySource().name())
         .paymentSource(txn.getPaymentSource())
         .movement(txn.getMovement())
+        .bankCode(
+            txn.getOriginBankCode() != null
+                ? txn.getOriginBankCode()
+                : account == null ? null : account.getBankCode())
         .build();
   }
 

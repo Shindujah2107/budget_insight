@@ -43,4 +43,11 @@ public class TransactionDto {
   private String paymentSource;
   /** A confirmed own-money movement: neither spending nor income. */
   private String movement;
+
+  /**
+   * The bank this transaction came from (V1.25.0), when known: the bank of its SMS, else of its
+   * account. Lets the app pair money leaving one of the customer's banks with money arriving at
+   * another even when the SMS shows too few account digits to name the account.
+   */
+  private String bankCode;
 }

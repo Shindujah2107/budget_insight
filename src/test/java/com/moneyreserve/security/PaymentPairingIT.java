@@ -295,4 +295,13 @@ class PaymentPairingIT {
                 + "\",\"categoryId\":\"" + UUID.randomUUID() + "\"}");
     assertEquals(400, r.getStatusCode().value(), r.getBody());
   }
+
+  @Test
+  @DisplayName("each bank SMS transaction tells the app which bank it came from")
+  void smsCarriesItsBank() throws Exception {
+    UUID user = consented();
+    sms(user, key(), "7010", "ACCOUNT_TXN", "6800.00");
+    JsonNode row = ledger(user).path("transactions").get(0);
+    assertEquals("7010", row.path("bankCode").asText());
+  }
 }
