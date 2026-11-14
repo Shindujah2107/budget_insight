@@ -178,6 +178,35 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     return respond(userId, saved, from, to, null, false);
   }
 
+  /**
+   * Marks (or unmarks) a transaction as money moved between the customer's own accounts. Only a
+   * plain bank transaction can be marked: a cash-wallet entry, an ATM withdrawal and a row that
+   * already records another movement (bank to cash, a balance correction) keep their meaning.
+   */
+  private void applyOwnAccount(BiTransaction txn, boolean own) {
+    String current = txn.getMovement();
+    if (!own) {
+      if (CashWalletService.OWN_ACCOUNT.equals(current)) {
+        txn.setMovement(null);
+      } else if (current != null) {
+        throw new BudgetInsightsException(ErrorCode.INSIGHTS_TXN_NOT_EDITABLE);
+      }
+      return;
+    }
+    if (CashWalletService.OWN_ACCOUNT.equals(current)) {
+      return;
+    }
+    boolean withdrawal =
+        txn.getCategoryId() != null
+            && BiCategory.CASH_WITHDRAWAL_CODE.equals(queries.requireCategory(txn.getCategoryId()).getCode());
+    if (current != null
+        || CashWalletService.CASH_WALLET.equals(txn.getPaymentSource())
+        || withdrawal) {
+      throw new BudgetInsightsException(ErrorCode.INSIGHTS_TXN_NOT_EDITABLE);
+    }
+    txn.setMovement(CashWalletService.OWN_ACCOUNT);
+  }
+
   private static String merchantKey(String merchant) {
     String key = com.moneyreserve.service.calc.MerchantRuleMatcher.normalise(merchant);
     return key == null || key.length() <= 128 ? key : key.substring(0, 128);
@@ -276,6 +305,9 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     }
     if (sourceEdit) {
       if (CashWalletService.CASH_WALLET.equals(request.getPaymentSource())) {
+        if (txn.getMovement() != null) {
+          throw new BudgetInsightsException(ErrorCode.INSIGHTS_TXN_NOT_EDITABLE);
+        }
         if (cash == null || !cash.paysFromWallet(userId, txn.getCurrency(), request.getPaymentSource(), null)) {
           throw new BudgetInsightsException(ErrorCode.CASH_NOT_ACTIVE);
         }
@@ -287,6 +319,11 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
         txn.setPaymentSource(null);
       }
     }
+    String previousMovement = txn.getMovement();
+    if (request.getMovement() != null) {
+      applyOwnAccount(txn, "OWN_ACCOUNT".equals(request.getMovement()));
+    }
+    boolean movementChanged = !Objects.equals(previousMovement, txn.getMovement());
     if (cash != null
         && (recategorised || sourceEdit)
         && CashWalletService.CASH_WALLET.equals(txn.getPaymentSource())) {
@@ -325,8 +362,15 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
           userId,
           sameMerchant.size());
     }
-    if (fieldEdit) {
+    if (fieldEdit || movementChanged) {
       audit(saved, AuditAction.EDIT, previousCategoryId, previousCategoryId, userId);
+    }
+    if (movementChanged) {
+      log.info(
+          "Insights transaction marked txnId={} userId={} movement={}",
+          saved.getId(),
+          userId,
+          saved.getMovement());
     }
 
     // A moved date takes spend out of one period and puts it into another, so both are stale.

@@ -67,4 +67,14 @@ public class UpdateTransactionRequest {
 
   /** With {@code ACCOUNT}: one of the customer's own accounts, or none. */
   private java.util.UUID accountId;
+
+  /**
+   * {@code OWN_ACCOUNT}: "between my accounts", money moved from one of the customer's own
+   * accounts to another. It is then neither spending nor income (like an ATM withdrawal) but
+   * still listed. {@code NONE} undoes it. Allowed on SMS and manual transactions alike; not on a
+   * cash-wallet entry or a row that already records another movement.
+   */
+  @jakarta.validation.constraints.Pattern(
+      regexp = "^(OWN_ACCOUNT|NONE)$", message = "Please choose whether this moved between your accounts.")
+  private String movement;
 }
