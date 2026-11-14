@@ -194,7 +194,10 @@ public class CashWalletService {
     if (live.isPresent()) {
       BiCashWalletEntry old = live.get();
       old.setReversed(true);
-      entries.save(old);
+      // Flushed now: Hibernate runs a flush's inserts before its updates, so without this the
+      // new live entry below would be inserted while the old one is still live, and
+      // ux_bi_cash_entry_live_txn (one live entry per transaction) refuses the edit.
+      entries.saveAndFlush(old);
       balance = balance.subtract(old.getAmount());
       entries.save(
           entry(wallet, Kind.REVERSAL, old.getAmount().negate(), balance, revision, txn.getId(), now, actor)
