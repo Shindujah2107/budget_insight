@@ -37,4 +37,7 @@ public class IngestResultItem {
    * something the OTP guard caught is told the message could not be processed and nothing more.
    */
   private String error;
+
+  /** The SMS fits a bill payment the customer confirmed: linked to it, or to ask about (V1.26.0). */
+  private BillMatchDto billMatch;
 }

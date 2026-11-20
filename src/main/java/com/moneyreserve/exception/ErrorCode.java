@@ -79,6 +79,15 @@ public enum ErrorCode {
   INSIGHTS_BILL_PREMIUM(
       "MR.BIL.E.003", HttpStatus.FORBIDDEN, "This bill feature is part of MoneyReserve Premium."),
 
+  // "What changed?" (Premium Insights, V1.28.0). Two distinct refusals: the feature is switched
+  // off for everyone, or this customer is not entitled to Premium.
+  INSIGHTS_WHAT_CHANGED_DISABLED(
+      "MR.WCH.E.001", HttpStatus.FORBIDDEN, "This insight isn't available right now."),
+  INSIGHTS_WHAT_CHANGED_PREMIUM(
+      "MR.WCH.E.002", HttpStatus.FORBIDDEN, "This insight is part of MoneyReserve Premium."),
+  INSIGHTS_WHAT_CHANGED_PERIOD(
+      "MR.WCH.E.003", HttpStatus.BAD_REQUEST, "Please choose this month or an earlier one."),
+
   // Categories
   INSIGHTS_CATEGORY_INVALID(
       "MR.CAT.E.001", HttpStatus.BAD_REQUEST, "Please choose a category from the list."),

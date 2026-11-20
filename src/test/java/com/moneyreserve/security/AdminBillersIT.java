@@ -108,7 +108,8 @@ class AdminBillersIT {
     UUID user = UUID.randomUUID();
     pay(user, "ZZ TEL BILL PAY 0771", today.minusDays(40));
     pay(user, "ZeeTel online", today.minusDays(10));
-    JsonNode bill = bills(user).path("bills").get(0);
+    // Found since V1.27.0 as a suggestion (not a bill until the customer tracks it).
+    JsonNode bill = bills(user).path("suggestions").get(0);
     assertEquals("Biller ZZ_TEL", bill.path("name").asText(), "two payments are enough for a biller");
     assertEquals("ZZ_TEL", bill.path("billerCode").asText());
     assertEquals("கட்டணம்", bill.path("billerNameTa").asText());

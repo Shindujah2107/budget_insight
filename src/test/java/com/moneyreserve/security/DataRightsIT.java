@@ -107,6 +107,7 @@ class DataRightsIT {
           new Owned("BiDataExport", BY_USER),
           new Owned("BiUserMerchantCategory", BY_USER),
           new Owned("BiUserBill", BY_USER),
+          new Owned("BiBillCycle", BY_USER),
           new Owned("BiCashWallet", BY_USER),
           new Owned("BiCashWalletEntry", BY_USER),
           new Owned("BiCashWalletOperation", BY_USER),
@@ -186,6 +187,7 @@ class DataRightsIT {
   @Autowired private BiDeviceSyncStateRepository syncStates;
   @Autowired private com.moneyreserve.repository.BiUserMerchantCategoryRepository merchantChoices;
   @Autowired private com.moneyreserve.repository.BiUserBillRepository userBills;
+  @Autowired private com.moneyreserve.repository.BiBillCycleRepository billCycles;
   @Autowired private com.moneyreserve.repository.BiCashWalletRepository cashWallets;
   @Autowired private com.moneyreserve.repository.BiCashWalletEntryRepository cashEntries;
   @Autowired private com.moneyreserve.repository.BiCashWalletOperationRepository cashOperations;
@@ -385,6 +387,7 @@ class DataRightsIT {
       case "BiDeviceSyncState" -> "deviceSyncState";
       case "BiUserMerchantCategory" -> "merchantChoices";
       case "BiUserBill" -> "bills";
+      case "BiBillCycle" -> "billCycles";
       case "BiCashWallet" -> "cashWallets";
       case "BiCashWalletEntry" -> "cashWalletEntries";
       case "BiCashWalletReview" -> "cashWalletReviews";
@@ -617,6 +620,17 @@ class DataRightsIT {
                 .paymentCount((short) 3)
                 .createdAt(now)
                 .build());
+    // A bill cycle (V1.26.0) points at the bill too.
+    billCycles.save(
+        com.moneyreserve.domain.BiBillCycle.builder()
+            .id(UUID.randomUUID())
+            .userId(user)
+            .userBillId(bill.getId())
+            .dueOn(bill.getNextDueOn())
+            .expectedAmount(new java.math.BigDecimal("1500.00"))
+            .status(com.moneyreserve.domain.BillCycleStatus.DUE)
+            .createdAt(now)
+            .build());
     // A bill alert points at the bill: erasure must remove it first.
     billAlerts.save(
         com.moneyreserve.domain.BiBudgetAlert.builder()

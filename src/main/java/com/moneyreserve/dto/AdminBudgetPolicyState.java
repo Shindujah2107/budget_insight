@@ -17,6 +17,8 @@ import java.util.List;
  * @param alertCategoryApproaching whether CATEGORY_APPROACHING alerts are raised
  * @param alertCategoryExceeded whether CATEGORY_EXCEEDED alerts are raised
  * @param alertBudgetExceeded whether BUDGET_EXCEEDED alerts are raised
+ * @param whatChanged "What changed?" (Premium Insights) is available to entitled customers; it
+ *     never grants Premium (V1.28.0)
  */
 public record AdminBudgetPolicyState(
     int needsPct,
@@ -27,7 +29,32 @@ public record AdminBudgetPolicyState(
     int paceTolerancePct,
     boolean alertCategoryApproaching,
     boolean alertCategoryExceeded,
-    boolean alertBudgetExceeded) {
+    boolean alertBudgetExceeded,
+    boolean whatChanged) {
+
+  /** The fields before V1.28.0 ("What changed?" off). */
+  public AdminBudgetPolicyState(
+      int needsPct,
+      int wantsPct,
+      int savingsPct,
+      int trailingMonths,
+      int defaultAlertPct,
+      int paceTolerancePct,
+      boolean alertCategoryApproaching,
+      boolean alertCategoryExceeded,
+      boolean alertBudgetExceeded) {
+    this(
+        needsPct,
+        wantsPct,
+        savingsPct,
+        trailingMonths,
+        defaultAlertPct,
+        paceTolerancePct,
+        alertCategoryApproaching,
+        alertCategoryExceeded,
+        alertBudgetExceeded,
+        false);
+  }
 
   public static final int MIN_SPLIT_PCT = 0;
   public static final int MAX_SPLIT_PCT = 100;

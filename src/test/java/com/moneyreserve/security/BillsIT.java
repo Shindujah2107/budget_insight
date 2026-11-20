@@ -46,6 +46,7 @@ class BillsIT {
   @Autowired private ObjectMapper json;
   @Autowired private BiBillerRepository billers;
   @Autowired private BiBudgetAlertRepository alerts;
+  @Autowired private com.moneyreserve.repository.BiUserBillRepository userBills;
   @Autowired private com.moneyreserve.repository.BiCategoryRepository categories;
 
   private final LocalDate today = LocalDate.now(ZoneId.of("Asia/Colombo"));
@@ -109,6 +110,21 @@ class BillsIT {
     return data(r);
   }
 
+  /**
+   * What the radar found, as bills found before V1.27.0 are: DETECTED (new finds are suggestions;
+   * the behaviour of the bills that already exist is what these tests cover).
+   */
+  private JsonNode foundAsBefore(UUID user) throws Exception {
+    list(user);
+    for (com.moneyreserve.domain.BiUserBill b : userBills.findAllByUserIdOrderByNextDueOnAsc(user)) {
+      if (b.getStatus() == com.moneyreserve.domain.BillStatus.SUGGESTED) {
+        b.setStatus(com.moneyreserve.domain.BillStatus.DETECTED);
+        userBills.save(b);
+      }
+    }
+    return list(user);
+  }
+
   private static JsonNode named(JsonNode list, String name) {
     for (JsonNode b : list.path("bills")) {
       if (name.equals(b.path("name").asText())) {
@@ -135,7 +151,7 @@ class BillsIT {
     }
     pay(user, "Keells Super", "4200.00", today.minusDays(20)); // once: not a bill
 
-    JsonNode body = list(user);
+    JsonNode body = foundAsBefore(user);
     assertEquals(2, body.path("bills").size(), body.toString());
     JsonNode netflix = named(body, "Netflix");
     assertEquals("MONTHLY", netflix.path("cadence").asText());
@@ -164,7 +180,7 @@ class BillsIT {
       pay(user, "Sunrise Gym", "1500.00", today.minusDays(back));
       pay(user, "Paper Club", "800.00", today.minusDays(back));
     }
-    JsonNode body = list(user);
+    JsonNode body = foundAsBefore(user);
     String gym = named(body, "Sunrise Gym").path("id").asText();
     String paper = named(body, "Paper Club").path("id").asText();
 
@@ -230,6 +246,7 @@ class BillsIT {
       pay(user, "Lanka Water Co", "1000.00", today.minusDays(back));
       pay(user, "Hill Club", "2000.00", today.minusDays(back));
     }
+    foundAsBefore(user);
     pay(user, "Lanka Water Co", "1500.00", today.minusDays(10)); // +50% on the usual 1000
     // Payments reach today, so a bill that did not come is news (not a gap in an import).
     pay(user, "Keells Super", "4200.00", today);
@@ -261,7 +278,7 @@ class BillsIT {
       pay(user, "Hill Club", "2000.00", today.minusDays(back));
     }
     pay(user, "Keells Super", "4200.00", today);
-    String club = named(list(user), "Hill Club").path("id").asText();
+    String club = named(foundAsBefore(user), "Hill Club").path("id").asText();
     assertTrue(alertTypes(club).contains(BudgetAlertType.BILL_MISSED));
 
     pay(user, "Hill Club", "2000.00", today.minusDays(9)); // paid late, recorded now

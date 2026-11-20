@@ -204,25 +204,26 @@ class PaymentPairingIT {
   }
 
   @Test
-  @DisplayName("bill paid from the reminder, then the bank SMS: paired; the cycle can't be paid twice")
+  @DisplayName("bill paid in the sheet, then the bank SMS that fits it: the SMS becomes that payment (counted once); the cycle can't be paid twice")
   void billThenSms() throws Exception {
     UUID user = consented();
     String bill = rent(user, today);
     JsonNode p = paid(user, bill, "");
-    String id = p.path("payment").path("transaction").path("id").asText();
     assertEquals(today.plusMonths(1).toString(), p.path("bill").path("nextDueOn").asText(), "moved on a cycle");
-    assertEquals(id, sms(user, key(), "7010", "ACCOUNT_TXN", "58000.00").path("results").get(0).path("transactionId").asText());
+    JsonNode in = sms(user, key(), "7010", "ACCOUNT_TXN", "58000.00");
+    JsonNode match = in.path("results").get(0).path("billMatch");
+    assertTrue(match.path("linked").asBoolean(), in.toString());
+    assertEquals(bill, match.path("billId").asText());
     assertEquals(1, ledger(user).path("page").path("totalElements").asInt());
     assertEquals("58000.00", ledger(user).path("totals").path("moneyOut").asText());
 
-    // The next due date moved on a month; a second "paid" this cycle records nothing.
-    JsonNode again = paid(user, bill, "");
+    JsonNode again = paid(user, bill, ",\"dueOn\":\"" + today + "\"");
     assertTrue(again.path("alreadyPaid").asBoolean(), again.toString());
     assertEquals(1, ledger(user).path("page").path("totalElements").asInt());
   }
 
   @Test
-  @DisplayName("bill paid after its SMS arrived: the SMS row becomes the bill's payment, nothing added")
+  @DisplayName("bill paid in the sheet after its bank SMS arrived: the SMS row becomes the bill's payment, nothing added")
   void smsThenBill() throws Exception {
     UUID user = consented();
     String smsId = sms(user, key(), "7056", "ACCOUNT_TXN", "58000.00").path("results").get(0).path("transactionId").asText();
@@ -234,13 +235,28 @@ class PaymentPairingIT {
   }
 
   @Test
-  @DisplayName("bill paid from a confirmed ComBank attempt: recorded as that bank's attempt, and its SMS pairs with it")
+  @DisplayName("bill paid from a confirmed attempt after that bank's SMS arrived: the SMS row becomes the bill's payment")
+  void smsThenBillFromAttempt() throws Exception {
+    UUID user = consented();
+    String smsId = sms(user, key(), "7056", "ACCOUNT_TXN", "58000.00").path("results").get(0).path("transactionId").asText();
+    String bill = rent(user, today);
+    JsonNode p = paid(user, bill, ",\"originBankCode\":\"7056\"");
+    assertEquals(smsId, p.path("payment").path("transaction").path("id").asText());
+    assertTrue(p.path("payment").path("duplicate").asBoolean());
+    assertEquals(1, ledger(user).path("page").path("totalElements").asInt());
+  }
+
+  @Test
+  @DisplayName("bill paid from a confirmed ComBank attempt: another bank's SMS is a different payment; ComBank's SMS becomes it")
   void billFromAttempt() throws Exception {
     UUID user = consented();
     String bill = rent(user, today);
-    String id = paid(user, bill, ",\"originBankCode\":\"7056\"").path("payment").path("transaction").path("id").asText();
-    assertEquals(1, sms(user, key(), "7010", "ACCOUNT_TXN", "58000.00").path("accepted").asInt(), "another bank");
-    assertEquals(id, sms(user, key(), "7056", "ACCOUNT_TXN", "58000.00").path("results").get(0).path("transactionId").asText());
+    paid(user, bill, ",\"originBankCode\":\"7056\"");
+    JsonNode other = sms(user, key(), "7010", "ACCOUNT_TXN", "58000.00");
+    assertEquals(1, other.path("accepted").asInt(), "another bank");
+    assertTrue(other.path("results").get(0).path("billMatch").isMissingNode());
+    JsonNode same = sms(user, key(), "7056", "ACCOUNT_TXN", "58000.00");
+    assertTrue(same.path("results").get(0).path("billMatch").path("linked").asBoolean());
     assertEquals(2, ledger(user).path("page").path("totalElements").asInt());
   }
 

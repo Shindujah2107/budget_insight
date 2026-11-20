@@ -88,6 +88,49 @@ public class BillsController {
     return refused != null ? refused : ok(bills.markPaid(caller, billId, request));
   }
 
+  @Operation(summary = "A suggested recurring payment and the payments it was found from")
+  @GetMapping("/{billId}/suggestion")
+  public ResponseEntity<?> suggestion(@AuthenticationPrincipal Caller caller, @PathVariable UUID billId) {
+    ResponseEntity<?> refused = guard(caller);
+    return refused != null ? refused : ok(bills.suggestion(caller, billId));
+  }
+
+  @Operation(summary = "Track a suggested recurring payment with the customer's own amount and dates")
+  @PostMapping("/{billId}/track")
+  public ResponseEntity<?> track(
+      @AuthenticationPrincipal Caller caller, @PathVariable UUID billId, @Valid @RequestBody CreateBillRequest request) {
+    ResponseEntity<?> refused = guard(caller);
+    return refused != null ? refused : ok(bills.track(caller, billId, request));
+  }
+
+  @Operation(summary = "Yes, this bank payment is my bill payment: the SMS becomes the payment recorded for the bill")
+  @PostMapping("/{billId}/match")
+  public ResponseEntity<?> match(
+      @AuthenticationPrincipal Caller caller,
+      @PathVariable UUID billId,
+      @Valid @RequestBody com.moneyreserve.dto.BillSmsMatchRequest request) {
+    ResponseEntity<?> refused = guard(caller);
+    return refused != null ? refused : ok(bills.matchSms(caller, billId, request));
+  }
+
+  @Operation(summary = "Undo a match: the bank SMS is its own transaction again; the bill keeps the customer's payment")
+  @PostMapping("/{billId}/unmatch")
+  public ResponseEntity<?> unmatch(
+      @AuthenticationPrincipal Caller caller,
+      @PathVariable UUID billId,
+      @Valid @RequestBody com.moneyreserve.dto.BillSmsMatchRequest request) {
+    ResponseEntity<?> refused = guard(caller);
+    return refused != null ? refused : ok(bills.unmatchSms(caller, billId, request));
+  }
+
+  @Operation(summary = "\"I didn't pay it\" for a cycle left as Payment not confirmed")
+  @PostMapping("/{billId}/cycles/{cycleId}/skip")
+  public ResponseEntity<?> skip(
+      @AuthenticationPrincipal Caller caller, @PathVariable UUID billId, @PathVariable UUID cycleId) {
+    ResponseEntity<?> refused = guard(caller);
+    return refused != null ? refused : ok(bills.skipCycle(caller, billId, cycleId));
+  }
+
   @Operation(summary = "Remove a bill added by hand, or mark a found one not a bill")
   @DeleteMapping("/{billId}")
   public ResponseEntity<?> delete(@AuthenticationPrincipal Caller caller, @PathVariable UUID billId) {

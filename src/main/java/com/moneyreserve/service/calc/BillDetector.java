@@ -39,9 +39,24 @@ import java.util.UUID;
  */
 public final class BillDetector {
 
-  /** One stored transaction, as detection needs it. */
+  /**
+   * One stored transaction, as detection needs it. {@code id}, {@code accountId} and
+   * {@code categoryCode} (V1.27.0) are carried through so a suggestion can show its payments.
+   */
   public record Payment(
-      LocalDate date, BigDecimal amount, boolean moneyIn, String merchant, boolean transfer) {}
+      LocalDate date,
+      BigDecimal amount,
+      boolean moneyIn,
+      String merchant,
+      boolean transfer,
+      UUID id,
+      UUID accountId,
+      String categoryCode) {
+
+    public Payment(LocalDate date, BigDecimal amount, boolean moneyIn, String merchant, boolean transfer) {
+      this(date, amount, moneyIn, merchant, transfer, null, null, null);
+    }
+  }
 
   /** A published biller and its compiled name terms. */
   public record KnownBiller(
@@ -60,7 +75,9 @@ public final class BillDetector {
       Integer anchorDay,
       int paymentCount,
       /** Average of up to three payments before the latest: what a jump is measured against. */
-      BigDecimal previousAverage) {}
+      BigDecimal previousAverage,
+      /** The payments it was found from, oldest first (V1.27.0). */
+      List<Payment> evidence) {}
 
   /** Recent gaps judged for the cadence; older history does not block a bill that settled. */
   private static final int RECENT_GAPS = 6;
@@ -163,7 +180,8 @@ public final class BillDetector {
             next,
             anchor,
             paid.size(),
-            before.size() >= 2 ? average(before) : null));
+            before.size() >= 2 ? average(before) : null,
+            List.copyOf(paid)));
   }
 
   /** Payments by date: same-day repeats of one amount once, refunded payments removed. */

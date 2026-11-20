@@ -116,10 +116,19 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
       if (!"DEBIT".equals(request.getDirection()) || request.getPaymentSource() != null) {
         throw new BudgetInsightsException(ErrorCode.INSIGHTS_TXN_NOT_EDITABLE);
       }
+      // A bill the customer says they paid: the bank SMS already stored for it, when that is
+      // certain (V1.26.0). Anything else: the bank SMS only through a verified bank link.
       Optional<BiTransaction> sms =
           pairing == null
               ? Optional.empty()
-              : pairing.smsFor(userId, request.getOriginBankCode(), request.getAmount(), txnDate);
+              : request.getUserBillId() != null
+                  ? pairing
+                      .smsForBill(
+                          userId, request.getOriginBankCode(), request.getUserBillId(), request.getAmount(), txnDate, null)
+                      .filter(PaymentPairing.BillMatch::linked)
+                      .map(PaymentPairing.BillMatch::sms)
+                  : pairing.smsFor(
+                      userId, request.getOriginBankCode(), null, request.getAmount(), txnDate);
       if (sms.isPresent()) {
         return pairWithStoredSms(caller, sms.get(), request, idempotencyKey, from, to);
       }
@@ -469,6 +478,9 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     // it should not go unreported because the trigger moved away.
     budgetAlerts.evaluate(caller, saved.getTxnDate());
     if (bills != null) {
+      if (fieldEdit && saved.getUserBillId() != null) {
+        bills.paymentEdited(userId, saved); // the bill cycle it settled shows the corrected figures
+      }
       bills.refreshAfterCommit(caller.userId());
     }
     if (previousDate != null
@@ -528,8 +540,10 @@ public class InsightsTransactionServiceImpl implements InsightsTransactionServic
     // No alert evaluation here. A soft delete only ever reduces spend, so it cannot cross a
     // threshold, and an alert already raised stays raised: it records that the customer was told
     // something true at the time, and deleting the transaction does not un-tell them.
-    // Bills do change: a deleted payment can end or shift a recurring bill.
+    // Bills do change: a deleted payment can end or shift a recurring bill, and the bill cycle it
+    // settled can be answered again (V1.26.0).
     if (bills != null) {
+      bills.paymentRemoved(userId, saved.getId());
       bills.refreshAfterCommit(userId);
     }
 

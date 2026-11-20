@@ -83,6 +83,18 @@ public class BiUserBill {
   @Column(name = "payment_count", nullable = false)
   private Short paymentCount;
 
+  /**
+   * The customer tracked it and set its amount, repeat and due date (V1.27.0): detection never
+   * changes them, it only notes the latest payment.
+   */
+  @Builder.Default
+  @Column(name = "user_schedule", nullable = false)
+  private boolean userSchedule = false;
+
+  /** The payments a suggestion was found from: up to 12 transaction ids, comma-separated. */
+  @Column(name = "evidence", length = 1000)
+  private String evidence;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 

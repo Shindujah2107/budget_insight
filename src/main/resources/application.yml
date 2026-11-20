@@ -100,6 +100,15 @@ moneyreserve:
     bills:
       enabled: true
       premium-gate: false
+      # Bill identification (recurring-payment suggestions, V1.27.0). Free now. To make it
+      # Premium later: suggestions-premium: true, then premium-gate: true.
+      suggestions: true
+      suggestions-premium: false
+    # Premium entitlement (no subscription system yet): customer ids the operator grants Premium,
+    # optionally "<id>@<last valid day>". Empty: Premium-only features ("What changed?") are closed
+    # to everyone. Never taken from the app.
+    premium:
+      user-ids: []
     compliance:
       max-batch-size: 200
       rate-limit-messages: 600

@@ -14,6 +14,21 @@ public interface BiUserBillRepository extends JpaRepository<BiUserBill, UUID> {
 
   Optional<BiUserBill> findByIdAndUserId(UUID id, UUID userId);
 
+  /**
+   * The bill, locked for this transaction (V1.26.0): marking it paid, and the cycles' rollover,
+   * run one at a time per bill, so a cycle is settled once however many taps arrive together.
+   */
+  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("select b from BiUserBill b where b.id = :id and b.userId = :userId")
+  Optional<BiUserBill> lockByIdAndUserId(
+      @org.springframework.data.repository.query.Param("id") UUID id,
+      @org.springframework.data.repository.query.Param("userId") UUID userId);
+
+  /** All the customer's bills, locked in id order (one order everywhere, so no deadlock). */
+  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("select b from BiUserBill b where b.userId = :userId order by b.id")
+  List<BiUserBill> lockAllByUserId(@org.springframework.data.repository.query.Param("userId") UUID userId);
+
   long countByUserIdAndStatus(UUID userId, BillStatus status);
 
   /** How many customers' bills a biller is behind: counts only, for the Admin Dashboard. */
@@ -22,7 +37,8 @@ public interface BiUserBillRepository extends JpaRepository<BiUserBill, UUID> {
   /** Followed bills per biller: [billerId, count]. */
   @Query(
       "select b.billerId, count(b) from BiUserBill b where b.billerId is not null"
-          + " and b.status <> com.moneyreserve.domain.BillStatus.DISMISSED group by b.billerId")
+          + " and b.status <> com.moneyreserve.domain.BillStatus.DISMISSED"
+          + " and b.status <> com.moneyreserve.domain.BillStatus.SUGGESTED group by b.billerId")
   List<Object[]> countFollowedByBiller();
 
   /**
@@ -32,7 +48,8 @@ public interface BiUserBillRepository extends JpaRepository<BiUserBill, UUID> {
   @Query(
       "select b.payeeKey, b.cadence, count(b) from BiUserBill b"
           + " where b.billerId is null and b.payeeKey like 'M:%'"
-          + " and b.status in (com.moneyreserve.domain.BillStatus.DETECTED,"
+          + " and b.status in (com.moneyreserve.domain.BillStatus.SUGGESTED,"
+          + " com.moneyreserve.domain.BillStatus.DETECTED,"
           + " com.moneyreserve.domain.BillStatus.CONFIRMED)"
           + " group by b.payeeKey, b.cadence")
   List<Object[]> countUnknownRecurringPayees();

@@ -95,6 +95,8 @@ public class DataRightsServiceImpl implements DataRightsService {
               true),
           new CustomerTable("budgetAlerts", "BiBudgetAlert", BY_USER, true),
           // Bills radar (V1.19.0): the customer's bills, after the alerts that point at them.
+          // Bill cycles (V1.26.0): each due date of a bill and how it was settled; before bills.
+          new CustomerTable("billCycles", "BiBillCycle", BY_USER, true),
           new CustomerTable("bills", "BiUserBill", BY_USER, true),
           // Cash wallet (V1.21.0): checks, applied reviews and ledger entries, then the wallet.
           new CustomerTable("cashWalletReviews", "BiCashWalletReview", BY_USER, true),

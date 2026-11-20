@@ -140,8 +140,15 @@ class EndpointAuthorizationSweepIT {
                               request(endpoint.method(), caller),
                               String.class);
                       int status = response.getStatusCode().value();
+                      // A Premium feature that is switched off or not included in this
+                      // customer's entitlement answers 403 with its own business code
+                      // (MR.WCH.E.001 / .002): the caller was admitted, the feature refused.
+                      String body = response.getBody() == null ? "" : response.getBody();
+                      boolean featureRefusal =
+                          status == 403
+                              && (body.contains("\"MR.WCH.E.001\"") || body.contains("\"MR.WCH.E.002\""));
                       assertFalse(
-                          status == 401 || status == 403,
+                          (status == 401 || status == 403) && !featureRefusal,
                           endpoint
                               + " refused a properly identified caller with "
                               + status

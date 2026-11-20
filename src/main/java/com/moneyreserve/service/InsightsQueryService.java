@@ -31,6 +31,21 @@ public interface InsightsQueryService {
       UUID userId, UUID categoryId, LocalDate from, LocalDate to, int page, int size);
 
   /**
+   * One category's transactions and total under the "What changed?" rules (V1.28.0): the same
+   * spending rules as the comparison, one currency (default the app's), the given accounts only
+   * (each must be the customer's own; none = all). Every page adds up to the comparison's figure.
+   */
+  CategoryTransactionsResponse comparableCategoryTransactions(
+      UUID userId,
+      UUID categoryId,
+      LocalDate from,
+      LocalDate to,
+      List<UUID> accountIds,
+      String currency,
+      int page,
+      int size);
+
+  /**
    * Daily spend for one week, split into the card and bank series the chart draws (BI-16).
    *
    * <p>Seven points per series, always, with {@code "0.00"} for a day with no spend. Both series

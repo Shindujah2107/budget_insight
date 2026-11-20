@@ -23,4 +23,13 @@ public class BillsResponse {
 
   /** Bills can carry their own category (V1.24.0): the app asks for one when a bill is added. */
   private boolean categoriesEnabled;
+
+  /**
+   * Recurring payments found but not added (V1.27.0): "Possible recurring payments", for the
+   * customer to review. Never part of {@code bills} or the monthly total.
+   */
+  private List<BillDto> suggestions;
+
+  /** Bill identification is on for this customer (free, or Premium when it is a Premium feature). */
+  private boolean suggestionsEnabled;
 }

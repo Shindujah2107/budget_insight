@@ -484,6 +484,7 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
       SELECT t FROM BiTransaction t
       WHERE t.userId = :userId
         AND t.origin IS NOT NULL
+        AND t.userBillId IS NULL
         AND t.linkedKey IS NULL
         AND t.deletedAt IS NULL
         AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
@@ -523,4 +524,134 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
       @Param("to") LocalDate to);
 
   List<BiTransaction> findAllByUserIdAndUserBillIdAndDeletedAtIsNull(UUID userId, UUID userBillId);
+
+  /**
+   * Payments the customer recorded for a bill (marked paid, or a confirmed attempt for that bill)
+   * still waiting for their bank SMS, in a date window, oldest first (V1.26.0).
+   */
+  @Query(
+      """
+      SELECT t FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.origin IS NOT NULL
+        AND t.userBillId IS NOT NULL
+        AND t.linkedKey IS NULL
+        AND t.deletedAt IS NULL
+        AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
+        AND t.txnDate BETWEEN :from AND :to
+      ORDER BY t.txnDate ASC, t.createdAt ASC
+      """)
+  List<BiTransaction> findUnpairedBillPayments(
+      @Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+  /** Bank SMS payments not yet paired or linked to a bill, in a date window, any amount. */
+  @Query(
+      """
+      SELECT t FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.source <> com.moneyreserve.domain.TxnSource.MANUAL
+        AND t.origin IS NULL
+        AND t.linkedKey IS NULL
+        AND t.userBillId IS NULL
+        AND t.movement IS NULL
+        AND t.deletedAt IS NULL
+        AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
+        AND t.txnDate BETWEEN :from AND :to
+      ORDER BY t.txnDate ASC, t.createdAt ASC
+      """)
+  List<BiTransaction> findUnpairedSmsBetween(
+      @Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+  java.util.Optional<BiTransaction> findByIdAndUserId(UUID id, UUID userId);
+
+  // ---- "What changed?" (V1.28.0): one set of spending rules for the comparison and both periods'
+  // transaction lists, so a drilldown always adds up to the figure it was opened from. ----------
+
+  /**
+   * Recorded spending, as the breakdown counts it (money out, not deleted, not a movement between
+   * the customer's own accounts or into/out of the cash wallet, not a cash withdrawal), in one
+   * currency, optionally on chosen accounts only. Refunds (money in) are not netted, as in the
+   * breakdown. Unconfirmed payment attempts are never transactions.
+   */
+  String COMPARABLE_SPEND =
+      """
+       t.userId = :userId
+        AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
+        AND t.txnDate BETWEEN :from AND :to
+        AND t.deletedAt IS NULL
+        AND t.movement IS NULL
+        AND t.currency = :currency
+        AND NOT EXISTS (SELECT 1 FROM BiCategory cw
+                        WHERE cw.id = t.categoryId AND cw.code = 'CASH_WITHDRAWAL')
+        AND (:allAccounts = TRUE OR t.accountId IN :accountIds)
+      """;
+
+  /** Per category: {@code [categoryId, total, count]}. Every matching row, never a page. */
+  @Query("SELECT t.categoryId, SUM(t.amount), COUNT(t) FROM BiTransaction t WHERE" + COMPARABLE_SPEND + " GROUP BY t.categoryId")
+  List<Object[]> aggregateComparableSpend(
+      @Param("userId") UUID userId,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to,
+      @Param("currency") String currency,
+      @Param("allAccounts") boolean allAccounts,
+      @Param("accountIds") java.util.Collection<UUID> accountIds);
+
+  /** One category's comparable spending: {@code [total, count]}. */
+  @Query("SELECT SUM(t.amount), COUNT(t) FROM BiTransaction t WHERE t.categoryId = :categoryId AND" + COMPARABLE_SPEND)
+  List<Object[]> sumComparableSpend(
+      @Param("userId") UUID userId,
+      @Param("categoryId") UUID categoryId,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to,
+      @Param("currency") String currency,
+      @Param("allAccounts") boolean allAccounts,
+      @Param("accountIds") java.util.Collection<UUID> accountIds);
+
+  /** One category's comparable transactions, in the breakdown list's total order. */
+  @Query(
+      "SELECT t FROM BiTransaction t WHERE t.categoryId = :categoryId AND"
+          + COMPARABLE_SPEND
+          + " ORDER BY t.txnDate DESC, t.txnTimestamp DESC NULLS LAST, t.createdAt DESC, t.id DESC")
+  Page<BiTransaction> pageComparableSpend(
+      @Param("userId") UUID userId,
+      @Param("categoryId") UUID categoryId,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to,
+      @Param("currency") String currency,
+      @Param("allAccounts") boolean allAccounts,
+      @Param("accountIds") java.util.Collection<UUID> accountIds,
+      Pageable pageable);
+
+  /** Spending rows in another currency, left out of the comparison (counted, never summed). */
+  @Query(
+      """
+      SELECT COUNT(t) FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.direction = com.moneyreserve.domain.TxnDirection.DEBIT
+        AND t.txnDate BETWEEN :from AND :to
+        AND t.deletedAt IS NULL
+        AND t.movement IS NULL
+        AND t.currency <> :currency
+        AND (:allAccounts = TRUE OR t.accountId IN :accountIds)
+      """)
+  long countOtherCurrencySpend(
+      @Param("userId") UUID userId,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to,
+      @Param("currency") String currency,
+      @Param("allAccounts") boolean allAccounts,
+      @Param("accountIds") java.util.Collection<UUID> accountIds);
+
+  /** The customer's earliest recorded transaction (either direction), on the chosen accounts. */
+  @Query(
+      """
+      SELECT MIN(t.txnDate) FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.deletedAt IS NULL
+        AND (:allAccounts = TRUE OR t.accountId IN :accountIds)
+      """)
+  LocalDate earliestRecordedOn(
+      @Param("userId") UUID userId,
+      @Param("allAccounts") boolean allAccounts,
+      @Param("accountIds") java.util.Collection<UUID> accountIds);
 }

@@ -797,6 +797,62 @@
           }
         },
         {
+          "name": "A suggested recurring payment and why (its payments)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}/suggestion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}",
+                "suggestion"
+              ]
+            },
+            "description": "Only for a bill with status SUGGESTED: the payments it was found from (date, amount, description, card/account last digits), newest first, and over how many months."
+          }
+        },
+        {
+          "name": "Track a suggested recurring payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}/track",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}",
+                "track"
+              ]
+            },
+            "description": "The suggestion becomes a bill (CONFIRMED) with the customer's own amount, repeat and due date; detection never changes them. Its payee's payments settle each month.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Netflix\",\n  \"expectedAmount\": 1490,\n  \"cadence\": \"MONTHLY\",\n  \"nextDueOn\": \"2026-12-05\",\n  \"remindDaysBefore\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Mark a bill paid (records the payment once, or pairs it with the bank SMS)",
           "request": {
             "method": "POST",
@@ -819,16 +875,109 @@
                 "paid"
               ]
             },
-            "description": "Absent fields are left alone. name (blank = back to the detected name), confirm, dismiss (not a bill), remindDaysBefore 0-14; expectedAmount, cadence and nextDueOn only for bills added by hand.",
+            "description": "Marks one cycle paid, once. dueOn is the due date the customer was shown (a stale screen gets alreadyPaid, never the next cycle); cycleId answers a cycle from the bill's history (Payment not confirmed). Neither: the current cycle. The bill is locked while it is checked and settled.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clientRef\": \"bill-rent-2026-12\",\n  \"paidOn\": \"2026-12-01\",\n  \"amount\": 58000.0\n}",
+              "raw": "{\n  \"clientRef\": \"bill-rent-2026-12-05\",\n  \"paidOn\": \"2026-12-01\",\n  \"amount\": 58000.0,\n  \"dueOn\": \"2026-12-05\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
+          }
+        },
+        {
+          "name": "Yes, this bank payment is my bill payment (link the SMS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}/match",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}",
+                "match"
+              ]
+            },
+            "description": "The answer to \"Is this your … payment?\": the bank SMS becomes the payment recorded for the bill (counted once). Refused when it no longer fits or is already linked.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"smsTransactionId\": \"{{smsTxnId}}\",\n  \"recordedTransactionId\": \"{{recordedTxnId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Undo a bank SMS matched to a bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}/unmatch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}",
+                "unmatch"
+              ]
+            },
+            "description": "The SMS is its own transaction again; the bill keeps the payment the customer recorded.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"smsTransactionId\": \"{{smsTxnId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "A bill cycle was not paid (Payment not confirmed → Didn't pay)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/bills/{{billId}}/cycles/{{cycleId}}/skip",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "bills",
+                "{{billId}}",
+                "cycles",
+                "{{cycleId}}",
+                "skip"
+              ]
+            },
+            "description": "Only for a cycle whose asking days passed without an answer (status NOT_CONFIRMED). Returns the bill with its cycles."
           }
         },
         {
@@ -3670,6 +3819,60 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "What changed? (Premium Insights)",
+      "item": [
+        {
+          "name": "Availability (switch and Premium entitlement)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/what-changed/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "what-changed",
+                "availability"
+              ]
+            },
+            "description": "Not gated. featureKey insights.what-changed; enabled (global switch), entitled (server-side Premium), available, reason FEATURE_DISABLED | PREMIUM_REQUIRED | null."
+          }
+        },
+        {
+          "name": "Compare spending with the period before",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/what-changed?month=2026-10&accountId={{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "insights",
+                "what-changed"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2026-10"
+                },
+                {
+                  "key": "accountId",
+                  "value": "{{accountId}}"
+                }
+              ]
+            },
+            "description": "Premium. 403 MR.WCH.E.001 (switch off) / MR.WCH.E.002 (Premium required); 400 MR.WCH.E.003 (future month); 404 MR.TXN.E.003 (account not yours). See docs/features/what-changed/API.md."
+          }
         }
       ]
     }

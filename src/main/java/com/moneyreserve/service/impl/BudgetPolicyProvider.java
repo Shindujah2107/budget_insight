@@ -72,7 +72,8 @@ public class BudgetPolicyProvider {
         Math.max(0, properties.getPaceTolerancePct()),
         true,
         true,
-        true);
+        true,
+        false);
   }
 
   static AdminBudgetPolicyState toState(BiBudgetPolicy p) {
@@ -85,6 +86,7 @@ public class BudgetPolicyProvider {
         p.getPaceTolerancePct(),
         Boolean.TRUE.equals(p.getAlertCategoryApproaching()),
         Boolean.TRUE.equals(p.getAlertCategoryExceeded()),
-        Boolean.TRUE.equals(p.getAlertBudgetExceeded()));
+        Boolean.TRUE.equals(p.getAlertBudgetExceeded()),
+        Boolean.TRUE.equals(p.getWhatChangedOn()));
   }
 }

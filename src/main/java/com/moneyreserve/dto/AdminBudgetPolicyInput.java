@@ -18,7 +18,9 @@ public record AdminBudgetPolicyInput(
     @NotNull @Min(0) @Max(25) Integer paceTolerancePct,
     @NotNull Boolean alertCategoryApproaching,
     @NotNull Boolean alertCategoryExceeded,
-    @NotNull Boolean alertBudgetExceeded) {
+    @NotNull Boolean alertBudgetExceeded,
+    /** "What changed? — Premium Insights" (V1.28.0); absent = off. */
+    Boolean whatChanged) {
 
   public AdminBudgetPolicyState toState() {
     return new AdminBudgetPolicyState(
@@ -30,6 +32,7 @@ public record AdminBudgetPolicyInput(
         paceTolerancePct,
         alertCategoryApproaching,
         alertCategoryExceeded,
-        alertBudgetExceeded);
+        alertBudgetExceeded,
+        Boolean.TRUE.equals(whatChanged));
   }
 }

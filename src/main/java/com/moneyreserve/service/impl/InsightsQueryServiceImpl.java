@@ -213,6 +213,58 @@ public class InsightsQueryServiceImpl implements InsightsQueryService {
         .build();
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  public CategoryTransactionsResponse comparableCategoryTransactions(
+      UUID userId,
+      UUID categoryId,
+      LocalDate from,
+      LocalDate to,
+      List<UUID> accountIds,
+      String currency,
+      int page,
+      int size) {
+    InsightsPeriod period = period(from, to);
+    BiCategory category = requireCategory(categoryId);
+    List<UUID> chosen = new ArrayList<>(new LinkedHashSet<>(accountIds == null ? List.of() : accountIds));
+    for (UUID id : chosen) {
+      if (id == null || accounts.findByIdAndUserIdAndDeletedAtIsNull(id, userId).isEmpty()) {
+        throw new BudgetInsightsException(ErrorCode.INSIGHTS_ACCOUNT_NOT_FOUND);
+      }
+    }
+    boolean all = chosen.isEmpty();
+    java.util.Collection<UUID> ids = all ? List.of(new UUID(0L, 0L)) : chosen;
+    String money = currency == null || currency.isBlank() ? properties.getCurrency() : currency.trim().toUpperCase();
+    int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+    int safePage = Math.max(page, 0);
+
+    Page<BiTransaction> found =
+        transactions.pageComparableSpend(
+            userId, categoryId, period.start(), period.end(), money, all, ids, PageRequest.of(safePage, safeSize));
+    List<Object[]> sums = transactions.sumComparableSpend(userId, categoryId, period.start(), period.end(), money, all, ids);
+    BigDecimal total = sums.isEmpty() || sums.get(0)[0] == null ? BigDecimal.ZERO : (BigDecimal) sums.get(0)[0];
+
+    Map<UUID, BiAccount> accountsOnPage = loadAccounts(userId, found.getContent());
+    List<TransactionDto> items =
+        found.getContent().stream()
+            .map(t -> mapper.toDto(t, accountsOnPage.get(t.getAccountId())))
+            .collect(Collectors.toList());
+    return CategoryTransactionsResponse.builder()
+        .categoryId(category.getId())
+        .code(category.getCode())
+        .name(category.getNameEn())
+        .total(mapper.money(total))
+        .page(
+            CategoryTransactionsResponse.PageDto.builder()
+                .number(found.getNumber())
+                .size(found.getSize())
+                .totalElements(found.getTotalElements())
+                .totalPages(found.getTotalPages())
+                .build())
+        .transactions(items)
+        .build();
+  }
+
   // ---------------------------------------------------------------------------------
   // The ledger list (both directions)
   // ---------------------------------------------------------------------------------

@@ -416,6 +416,7 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
     row.setAlertCategoryApproaching(s.alertCategoryApproaching());
     row.setAlertCategoryExceeded(s.alertCategoryExceeded());
     row.setAlertBudgetExceeded(s.alertBudgetExceeded());
+    row.setWhatChangedOn(s.whatChanged());
     row.setUpdatedAt(OffsetDateTime.now());
     policies.saveAndFlush(row);
     return id;

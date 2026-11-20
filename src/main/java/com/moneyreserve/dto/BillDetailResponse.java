@@ -17,6 +17,8 @@ import lombok.NoArgsConstructor;
 public class BillDetailResponse {
   private BillDto bill;
   private List<Paid> payments;
+  /** Each due date of the bill and how it stands, newest first (V1.26.0). */
+  private List<Cycle> cycles;
 
   @Data
   @Builder
@@ -25,5 +27,20 @@ public class BillDetailResponse {
   public static class Paid {
     private LocalDate date;
     private String amount;
+  }
+
+  @Data
+  @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public static class Cycle {
+    private java.util.UUID id;
+    private LocalDate dueOn;
+    /** DUE, PAID, NOT_CONFIRMED or SKIPPED. */
+    private String status;
+    private String expectedAmount;
+    private String actualAmount;
+    private LocalDate paidOn;
   }
 }

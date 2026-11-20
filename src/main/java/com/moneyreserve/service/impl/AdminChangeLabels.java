@@ -45,6 +45,7 @@ final class AdminChangeLabels {
     FIELD_NAMES.put("alertCategoryApproaching", "category approaching alert");
     FIELD_NAMES.put("alertCategoryExceeded", "category exceeded alert");
     FIELD_NAMES.put("alertBudgetExceeded", "monthly budget exceeded alert");
+    FIELD_NAMES.put("whatChanged", "What changed? — Premium Insights");
     FIELD_NAMES.put("billType", "bill type");
     FIELD_NAMES.put("terms", "name terms");
     FIELD_NAMES.put("tolerancePct", "amount tolerance");
@@ -63,7 +64,8 @@ final class AdminChangeLabels {
           "paceTolerancePct",
           "alertCategoryApproaching",
           "alertCategoryExceeded",
-          "alertBudgetExceeded");
+          "alertBudgetExceeded",
+          "whatChanged");
 
   private AdminChangeLabels() {}
 

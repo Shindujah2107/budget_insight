@@ -202,7 +202,12 @@ public class InsightsController {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "20") int size,
+      // V1.28.0, optional: "What changed?" opens each period's list with its exact filters. With
+      // either given, the list and total follow the comparison's rules on those accounts / that
+      // currency; without them, nothing changes.
+      @RequestParam(name = "accountId", required = false) List<UUID> accountIds,
+      @RequestParam(required = false) String currency) {
 
     requireCaller(caller);
     ResponseEntity<?> unavailable = featureGuard();
@@ -211,6 +216,11 @@ public class InsightsController {
     }
     if (stubbing()) {
       return ok(fixtures.categoryTransactions(categoryId, page, size));
+    }
+    if ((accountIds != null && !accountIds.isEmpty()) || currency != null) {
+      return ok(
+          queries.comparableCategoryTransactions(
+              caller.userId(), categoryId, from, to, accountIds, currency, page, size));
     }
     return ok(queries.categoryTransactions(caller.userId(), categoryId, from, to, page, size));
   }

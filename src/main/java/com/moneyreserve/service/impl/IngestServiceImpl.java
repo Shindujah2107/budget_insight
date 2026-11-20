@@ -430,10 +430,21 @@ public class IngestServiceImpl implements IngestService {
 
       // ---- Step 4b. The customer already recorded this payment (confirmed an attempt or marked
       // a bill paid): the SMS is paired with that row instead of being counted a second time.
-      if (pairing != null && message.direction() == TxnDirection.DEBIT) {
+      // A bill the customer said they paid (V1.26.0): that confirmation is the link, so the SMS
+      // only has to fit it. Certain → the SMS becomes that payment below; otherwise one question.
+      PaymentPairing.BillMatch billMatch =
+          pairing != null && message.direction() == TxnDirection.DEBIT
+              ? pairing
+                  .billPaymentFor(userId, message.bankCode(), message.amount(), message.txnDate(), pairedInBatch)
+                  .orElse(null)
+              : null;
+      if (billMatch != null) {
+        pairedInBatch.add(billMatch.recorded().getId());
+      }
+      if (billMatch == null && pairing != null && message.direction() == TxnDirection.DEBIT) {
         Optional<BiTransaction> recorded =
             pairing.recordedFor(
-                userId, message.bankCode(), message.amount(), message.txnDate(), pairedInBatch);
+                userId, message.bankCode(), message.merchant(), message.amount(), message.txnDate(), pairedInBatch);
         if (recorded.isPresent()) {
           BiTransaction row = recorded.get();
           row.setLinkedKey(message.storedKey());
@@ -516,11 +527,17 @@ public class IngestServiceImpl implements IngestService {
       seenInBatch.put(message.storedKey(), saved.getId());
       touchedDates.add(message.txnDate());
       outcome.accepted++;
+      com.moneyreserve.dto.BillMatchDto matched = null;
+      if (billMatch != null && bills != null) {
+        matched = bills.smsMatched(userId, saved, billMatch.recorded(), billMatch.linked());
+        touchedDates.add(billMatch.recorded().getTxnDate());
+      }
       results[message.index()] =
           IngestResultItem.builder()
               .idempotencyKey(message.deviceKey())
               .status(ACCEPTED)
               .transactionId(saved.getId())
+              .billMatch(matched)
               .build();
 
       // Codes and identifiers only. No amount and no merchant: the point of confining this

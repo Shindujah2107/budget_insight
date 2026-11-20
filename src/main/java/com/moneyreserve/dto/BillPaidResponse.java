@@ -10,4 +10,9 @@ import lombok.Builder;
  */
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record BillPaidResponse(Boolean alreadyPaid, TransactionMutationResponse payment, BillDto bill) {}
+public record BillPaidResponse(
+    Boolean alreadyPaid,
+    TransactionMutationResponse payment,
+    BillDto bill,
+    /** A stored bank SMS that may be this payment but could not be linked for certain: ask once. */
+    BillMatchDto possibleSms) {}

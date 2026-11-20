@@ -137,6 +137,9 @@ public class InsightsProperties {
 
   private final Bills bills = new Bills();
 
+  /** Who is entitled to Premium features (see {@link Premium}). */
+  private final Premium premium = new Premium();
+
   private final Recommendations recommendations = new Recommendations();
 
   private final Stub stub = new Stub();
@@ -341,6 +344,19 @@ public class InsightsProperties {
   }
 
   /**
+   * Premium entitlement. There is no subscription system yet: until there is, the only customers
+   * entitled to Premium-only features are the ones listed here by the operator (server
+   * configuration, never anything the app sends). Empty by default, so Premium-only features are
+   * closed to everyone. Each entry is a customer id, optionally with the last day it is valid:
+   * {@code 3f1c…-…} or {@code 3f1c…-…@2026-12-31}.
+   */
+  @Getter
+  @Setter
+  public static class Premium {
+    private java.util.List<String> userIds = new java.util.ArrayList<>();
+  }
+
+  /**
    * Bills radar: recurring bills found in a customer's own stored payments, with due, jumped and
    * missed alerts. Reads only transactions already stored, within {@code lookback-months}, so a
    * yearly bill is found only when that window covers two years; it can always be added by hand.
@@ -375,6 +391,19 @@ public class InsightsProperties {
      * they stay free even when the gate is on.
      */
     private boolean categoriesPremium = false;
+
+    /**
+     * Bill identification (V1.27.0): recurring payments found in the customer's payments are
+     * offered as suggestions to review and track. Off: no suggestions are shown or tracked (bills
+     * added by hand, bills found before, reminders and payment questions work as before).
+     */
+    private boolean suggestions = true;
+
+    /**
+     * With {@code premium-gate} on, bill identification becomes a Premium feature. Off (the
+     * default): free even when the gate is on.
+     */
+    private boolean suggestionsPremium = false;
 
     /** BillsDailyJob: customers per page, and how long one run may take before it stops. */
     private int dailyJobPageSize = 500;

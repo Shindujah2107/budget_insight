@@ -57,6 +57,11 @@ public class BiBudgetPolicy {
   @Column(name = "alert_budget_exceeded_on", nullable = false)
   private Boolean alertBudgetExceeded;
 
+  /** "What changed?" (Premium Insights) available to entitled customers (V1.28.0). */
+  @Builder.Default
+  @Column(name = "what_changed_on", nullable = false)
+  private Boolean whatChangedOn = Boolean.FALSE;
+
   @Column(name = "updated_at", nullable = false)
   private OffsetDateTime updatedAt;
 }

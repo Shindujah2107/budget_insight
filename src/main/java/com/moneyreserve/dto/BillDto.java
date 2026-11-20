@@ -51,4 +51,16 @@ public class BillDto {
 
   /** The bill's own category (V1.24.0), when bill categories are on and one was chosen. */
   private UUID categoryId;
+
+  /**
+   * Earlier due dates left without an answer (V1.26.0): "Payment not confirmed", answerable from
+   * the bill. Absent when there are none.
+   */
+  private Integer unconfirmedCycles;
+
+  /** The usual day of the month (31 = month-end), when known: "usually around the 5th". */
+  private Integer anchorDay;
+
+  /** Tracked from a suggestion: the customer set its amount and dates (V1.27.0). */
+  private Boolean tracked;
 }

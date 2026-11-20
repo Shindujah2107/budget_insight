@@ -91,7 +91,7 @@ class DemoBillsSeederIT {
   }
 
   @Test
-  @DisplayName("shows five bills with a jumped electricity bill, and seeding twice stores nothing twice")
+  @DisplayName("shows five suggested recurring payments (not bills until tracked), and seeding twice stores nothing twice")
   void demoAccountShowsTheRadar() throws Exception {
     DemoBillsSeeder seeder = new DemoBillsSeeder(users, transactions, bills, properties);
     seeder.run(null);
@@ -105,7 +105,8 @@ class DemoBillsSeederIT {
     assertEquals(200, r.getStatusCode().value(), r.getBody());
 
     Map<String, JsonNode> byName = new HashMap<>();
-    for (JsonNode b : json.readTree(r.getBody()).path("data").path("bills")) {
+    assertEquals(0, json.readTree(r.getBody()).path("data").path("bills").size(), "suggestions are not added automatically");
+    for (JsonNode b : json.readTree(r.getBody()).path("data").path("suggestions")) {
       byName.put(b.path("billerCode").asText(b.path("name").asText()), b);
     }
     assertEquals(5, byName.size(), byName.keySet().toString());
@@ -114,6 +115,6 @@ class DemoBillsSeederIT {
       assertEquals(3, b.path("paymentCount").asInt(), "each payment stored once: " + b);
     }
     UUID ceb = UUID.fromString(byName.get("CEB").path("id").asText());
-    assertEquals(1, alerts.findAllByBillIdAndAlertType(ceb, BudgetAlertType.BILL_JUMPED).size());
+    assertEquals(0, alerts.findAllByBillIdAndAlertType(ceb, BudgetAlertType.BILL_JUMPED).size(), "a suggestion raises no alert");
   }
 }
