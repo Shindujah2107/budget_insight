@@ -64,7 +64,7 @@ public class OpenApiConfig {
         .servers(List.of(new Server().url(serverUrl(contextPath))))
         .info(
             new Info()
-                .title("MoneyReserve API")
+                .title("RupeeMate API")
                 .description(description())
                 .version("1.0.0"))
         .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))

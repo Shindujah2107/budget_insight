@@ -9,12 +9,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The merchant rules exactly as migration V1.12.0 inserts them, read from the migration file on
+ * The merchant rules exactly as they stand after migration V1.31.0 (its full rule set; V1.12.0 before it), read from the migration file on
  * the classpath, so the golden regression tests always test the rules that ship.
  */
 public final class MigrationRules {
 
-  public static final String MIGRATION = "db/migration/common/V1.12.0__merchant_rules_terms.sql";
+  public static final String MIGRATION = "db/migration/common/V1.31.0__day_to_day_categories.sql";
 
   /** One migrated rule. */
   public record Rule(String id, String categoryCode, int priority, String level, List<String> names) {

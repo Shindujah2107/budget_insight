@@ -108,6 +108,8 @@ class DataRightsIT {
           new Owned("BiUserMerchantCategory", BY_USER),
           new Owned("BiUserBill", BY_USER),
           new Owned("BiBillCycle", BY_USER),
+          new Owned("BiAskMrWorth", BY_USER),
+          new Owned("BiRecategoriseMove", BY_USER),
           new Owned("BiCashWallet", BY_USER),
           new Owned("BiCashWalletEntry", BY_USER),
           new Owned("BiCashWalletOperation", BY_USER),
@@ -140,7 +142,9 @@ class DataRightsIT {
           // The message type list SMS templates pick from (V1.15.0): configuration, no customer data.
           "BiMessageType",
           // Known billers for the bills radar (V1.19.0): configuration, no customer data.
-          "BiBiller");
+          "BiBiller",
+          // Ask MR's suggestion wording (V1.29.0): configuration, no customer data.
+          "BiAskMrTip");
 
   /**
    * Not customer-scoped at all.
@@ -152,6 +156,10 @@ class DataRightsIT {
   private static final Set<String> NOT_CUSTOMER_SCOPED =
       Set.of(
           "BiComplianceEvent",
+          // Admin re-sort runs (V1.31.0): who ran it and when; the moves carry the customer id.
+          "BiRecategoriseRun",
+          // Ask MR usage (V1.29.0): counts per question per day, no customer id and no amounts.
+          "BiAskMrUsage",
           // Where a daily job stopped (V1.24.0): a job name, a date and a customer id it reached,
           // nothing the customer wrote. Not exported; it is overwritten every day.
           "BiJobCursor",
@@ -168,6 +176,8 @@ class DataRightsIT {
           // erasure on purpose. DELETE /api/auth/account removes all three (AuthFlowIT.deleteAccount).
           "BiAppUser",
           "BiAuthOtp",
+          // Sign-in code requests (V1.32.0): salted hashes of the number and address, kept two days.
+          "BiAuthCodeRequest",
           "BiRefreshToken");
 
   @PersistenceContext private EntityManager entityManager;
@@ -188,6 +198,9 @@ class DataRightsIT {
   @Autowired private com.moneyreserve.repository.BiUserMerchantCategoryRepository merchantChoices;
   @Autowired private com.moneyreserve.repository.BiUserBillRepository userBills;
   @Autowired private com.moneyreserve.repository.BiBillCycleRepository billCycles;
+  @Autowired private com.moneyreserve.repository.BiAskMrWorthRepository askMrWorth;
+  @Autowired private com.moneyreserve.repository.BiRecategoriseRunRepository resortRuns;
+  @Autowired private com.moneyreserve.repository.BiRecategoriseMoveRepository resortMoves;
   @Autowired private com.moneyreserve.repository.BiCashWalletRepository cashWallets;
   @Autowired private com.moneyreserve.repository.BiCashWalletEntryRepository cashEntries;
   @Autowired private com.moneyreserve.repository.BiCashWalletOperationRepository cashOperations;
@@ -630,6 +643,32 @@ class DataRightsIT {
             .expectedAmount(new java.math.BigDecimal("1500.00"))
             .status(com.moneyreserve.domain.BillCycleStatus.DUE)
             .createdAt(now)
+            .build());
+    // An Ask MR "Worth knowing" card shown to the customer (V1.29.0).
+    askMrWorth.save(
+        com.moneyreserve.domain.BiAskMrWorth.builder()
+            .id(UUID.randomUUID())
+            .userId(user)
+            .topic("CATEGORY:DINING_OUT:UP")
+            .shownOn(java.time.LocalDate.now())
+            .build());
+    // An admin re-sort moved one of the customer's payments (V1.31.0): the log row is theirs.
+    UUID resortRun = UUID.randomUUID();
+    resortRuns.save(
+        com.moneyreserve.domain.BiRecategoriseRun.builder()
+            .id(resortRun)
+            .createdBy(UUID.randomUUID())
+            .createdAt(now)
+            .moved(1)
+            .build());
+    resortMoves.save(
+        com.moneyreserve.domain.BiRecategoriseMove.builder()
+            .runId(resortRun)
+            .transactionId(UUID.randomUUID())
+            .userId(user)
+            .fromCategoryId(UUID.randomUUID())
+            .toCategoryId(UUID.randomUUID())
+            .fromSource(com.moneyreserve.domain.CategorySource.RULE)
             .build());
     // A bill alert points at the bill: erasure must remove it first.
     billAlerts.save(

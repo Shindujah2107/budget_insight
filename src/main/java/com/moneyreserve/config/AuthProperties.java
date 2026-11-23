@@ -42,6 +42,15 @@ public class AuthProperties {
   /** Refresh-token lifetime. Each use replaces the token, so this is the idle limit, not a cap. */
   private Duration refreshTokenTtl = Duration.ofDays(30);
 
+  /**
+   * How long a just-rotated refresh token may be presented again without ending the sign-in. A
+   * phone that refreshes twice at once, or loses the answer to a refresh, sends the old token a
+   * second time within seconds; inside this window, and only while the sign-in still has a live
+   * newer token, it gets another token pair in the same session. Later, or after a log-out, reuse
+   * still revokes every session of that sign-in. Zero turns the window off.
+   */
+  private Duration refreshReuseGrace = Duration.ofSeconds(30);
+
 
   /**
    * Mobile numbers that are given the SUPER_ADMIN role (the admin API) when they sign in. Any
@@ -88,8 +97,25 @@ public class AuthProperties {
     private int maxAttempts = 5;
     /** Minimum gap between two codes sent to the same number. */
     private Duration resendInterval = Duration.ofSeconds(30);
-    /** Codes one number may be sent per hour, whatever the purpose. Caps SMS cost and abuse. */
+    /**
+     * Codes one number may be asked for per hour, whatever the purpose. Caps SMS cost and abuse.
+     * Since V1.32.0 every request counts, also one whose SMS could not be sent.
+     */
     private int maxSendsPerHour = 10;
+
+    /**
+     * Code requests one network address may make per hour, for any numbers (0 = no limit). Stops
+     * one device asking codes for many numbers. Mobile networks put many phones behind one
+     * address, so keep this well above what one person needs. Behind a reverse proxy, set
+     * {@code server.forward-headers-strategy=native} so the customer's address is the one counted.
+     */
+    private int maxSendsPerHourPerIp = 10;
+
+    /** Code requests in total per 24 hours before sign-in SMS stop (0 = no cap). A cost guard. */
+    private int maxSendsPerDay = 3000;
+
+    /** Logged as a warning when the day's requests reach this share of the daily cap. */
+    private int dailyAlertPct = 80;
     /**
      * A fixed code used instead of a random one. Local development only:
      * {@link AuthDevModeGuard} refuses to start with this set on any other profile.

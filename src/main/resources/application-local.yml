@@ -34,3 +34,10 @@ moneyreserve:
 logging:
   level:
     com.moneyreserve: DEBUG
+
+# API docs and Swagger UI for local work (off by default everywhere else).
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

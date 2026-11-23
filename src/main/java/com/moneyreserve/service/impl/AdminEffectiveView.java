@@ -72,6 +72,7 @@ public class AdminEffectiveView {
 
   private final BiCategoryRepository categories;
   private final com.moneyreserve.repository.BiBillerRepository billers;
+  private final com.moneyreserve.repository.BiAskMrTipRepository askMrTips;
   private final BiMerchantCategoryMapRepository merchantRules;
   private final BiSmsSenderAllowlistRepository senders;
   private final BiBankParserTemplateRepository templates;
@@ -128,6 +129,26 @@ public class AdminEffectiveView {
                 .thenComparing(com.moneyreserve.domain.BiBiller::getCode))
         .forEach(b -> published.put(b.getId(), toState(b)));
     return merge(ConfigEntityType.BILLER, published, com.moneyreserve.dto.AdminBillerState.class);
+  }
+
+  public List<Item<com.moneyreserve.dto.AdminAskMrTipState>> askMrTips() {
+    Map<UUID, com.moneyreserve.dto.AdminAskMrTipState> published = new LinkedHashMap<>();
+    askMrTips.findAll().stream()
+        .sorted(
+            Comparator.comparing(com.moneyreserve.domain.BiAskMrTip::getSortOrder)
+                .thenComparing(com.moneyreserve.domain.BiAskMrTip::getCode))
+        .forEach(t -> published.put(t.getId(), toState(t)));
+    return merge(ConfigEntityType.ASK_MR_TIP, published, com.moneyreserve.dto.AdminAskMrTipState.class);
+  }
+
+  public com.moneyreserve.dto.AdminAskMrTipState toState(com.moneyreserve.domain.BiAskMrTip t) {
+    return new com.moneyreserve.dto.AdminAskMrTipState(
+        t.getCode(),
+        t.getTextEn(),
+        t.getTextSi(),
+        t.getTextTa(),
+        Boolean.TRUE.equals(t.getIsActive()),
+        t.getSortOrder() == null ? 0 : t.getSortOrder());
   }
 
   public com.moneyreserve.dto.AdminBillerState toState(com.moneyreserve.domain.BiBiller b) {
@@ -213,7 +234,8 @@ public class AdminEffectiveView {
         c.getColourHex(),
         c.getSortOrder() == null ? 0 : c.getSortOrder(),
         Boolean.TRUE.equals(c.getIsActive()),
-        c.getSpendBucket());
+        c.getSpendBucket(),
+        c.getSpendType());
   }
 
   public AdminMerchantRuleState toState(BiMerchantCategoryMap r) {

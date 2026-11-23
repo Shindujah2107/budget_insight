@@ -19,6 +19,7 @@ import java.util.List;
  * @param alertBudgetExceeded whether BUDGET_EXCEEDED alerts are raised
  * @param whatChanged "What changed?" (Premium Insights) is available to entitled customers; it
  *     never grants Premium (V1.28.0)
+ * @param askMr Ask MR settings (V1.29.0); absent in older drafts, which read as the defaults (off)
  */
 public record AdminBudgetPolicyState(
     int needsPct,
@@ -30,7 +31,40 @@ public record AdminBudgetPolicyState(
     boolean alertCategoryApproaching,
     boolean alertCategoryExceeded,
     boolean alertBudgetExceeded,
-    boolean whatChanged) {
+    boolean whatChanged,
+    AskMrSettings askMr) {
+
+  public AdminBudgetPolicyState {
+    if (askMr == null) {
+      askMr = AskMrSettings.DEFAULTS;
+    }
+  }
+
+  /** The fields before V1.29.0 (Ask MR at its defaults, off). */
+  public AdminBudgetPolicyState(
+      int needsPct,
+      int wantsPct,
+      int savingsPct,
+      int trailingMonths,
+      int defaultAlertPct,
+      int paceTolerancePct,
+      boolean alertCategoryApproaching,
+      boolean alertCategoryExceeded,
+      boolean alertBudgetExceeded,
+      boolean whatChanged) {
+    this(
+        needsPct,
+        wantsPct,
+        savingsPct,
+        trailingMonths,
+        defaultAlertPct,
+        paceTolerancePct,
+        alertCategoryApproaching,
+        alertCategoryExceeded,
+        alertBudgetExceeded,
+        whatChanged,
+        AskMrSettings.DEFAULTS);
+  }
 
   /** The fields before V1.28.0 ("What changed?" off). */
   public AdminBudgetPolicyState(
@@ -53,7 +87,8 @@ public record AdminBudgetPolicyState(
         alertCategoryApproaching,
         alertCategoryExceeded,
         alertBudgetExceeded,
-        false);
+        false,
+        AskMrSettings.DEFAULTS);
   }
 
   public static final int MIN_SPLIT_PCT = 0;
@@ -81,6 +116,7 @@ public record AdminBudgetPolicyState(
     range(out, "trailingMonths", trailingMonths, MIN_TRAILING_MONTHS, MAX_TRAILING_MONTHS);
     range(out, "defaultAlertPct", defaultAlertPct, MIN_ALERT_PCT, MAX_ALERT_PCT);
     range(out, "paceTolerancePct", paceTolerancePct, MIN_PACE_PCT, MAX_PACE_PCT);
+    askMr.problems(out);
     return out;
   }
 

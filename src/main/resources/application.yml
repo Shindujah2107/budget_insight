@@ -40,20 +40,28 @@ spring:
 
 server:
   port: ${PORT:8087}
+  # Behind a reverse proxy / load balancer, set FORWARD_HEADERS_STRATEGY=native so the customer's
+  # address (X-Forwarded-For from a trusted proxy) is what the sign-in limits count.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
 
+# API docs and Swagger UI are off unless API_DOCS_ENABLED=true (on in the local profile): in
+# production they would list every route to anyone.
 springdoc:
   swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
   api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
     path: /v3/api-docs
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # Health only: info/env/metrics stay closed.
+        include: health
   endpoint:
     health:
       show-details: never
@@ -164,7 +172,12 @@ moneyreserve:
       ttl: 5m
       max-attempts: 5
       resend-interval: 30s
-      max-sends-per-hour: 10
+      max-sends-per-hour: ${OTP_MAX_PER_NUMBER_HOUR:10}
+      # Per network address, any numbers (0 = off). Mobile networks share addresses: keep it roomy.
+      max-sends-per-hour-per-ip: ${OTP_MAX_PER_IP_HOUR:10}
+      # All code requests per 24 h before sign-in SMS stop (0 = off); a warning is logged at the %.
+      max-sends-per-day: ${OTP_MAX_PER_DAY:3000}
+      daily-alert-pct: ${OTP_DAILY_ALERT_PCT:80}
     # Mobile numbers that get the SUPER_ADMIN role (the admin API) when they sign in.
     super-admin-phones: ${SUPER_ADMIN_PHONES:}
     sms:

@@ -68,7 +68,7 @@ class TextLkSmsSenderTest {
   @Test
   @DisplayName("sends a plain SMS to the number without its plus, with the bearer token")
   void sends() throws Exception {
-    sender().send("+94771234567", "Your MoneyReserve code is 482913.");
+    sender().send("+94771234567", "Your RupeeMate code is 482913.");
 
     assertEquals("/api/v3/sms/send", path.get());
     assertEquals("Bearer " + TOKEN, authorization.get());
@@ -76,7 +76,7 @@ class TextLkSmsSenderTest {
     assertEquals("94771234567", sent.get("recipient").asText());
     assertEquals("MoneyRsrv", sent.get("sender_id").asText());
     assertEquals("plain", sent.get("type").asText());
-    assertEquals("Your MoneyReserve code is 482913.", sent.get("message").asText());
+    assertEquals("Your RupeeMate code is 482913.", sent.get("message").asText());
   }
 
   @Test
@@ -86,7 +86,7 @@ class TextLkSmsSenderTest {
     RuntimeException ex =
         assertThrows(
             TextLkSmsSender.SmsSendException.class,
-            () -> sender().send("+94771234567", "Your MoneyReserve code is 482913."));
+            () -> sender().send("+94771234567", "Your RupeeMate code is 482913."));
     assertTrue(ex.getMessage().contains("Sender ID not approved"));
     assertFalse(ex.getMessage().contains(TOKEN));
     assertFalse(ex.getMessage().contains("482913"));

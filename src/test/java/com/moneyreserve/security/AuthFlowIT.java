@@ -47,6 +47,7 @@ class AuthFlowIT {
 
   @Autowired private TestRestTemplate rest;
   @Autowired private BiAuthOtpRepository otps;
+  @Autowired private com.moneyreserve.repository.BiRefreshTokenRepository refreshTokens;
   @Autowired private ObjectMapper json;
 
   private String phone;
@@ -155,7 +156,7 @@ class AuthFlowIT {
   }
 
   @Test
-  @DisplayName("refresh rotates; replaying a rotated token revokes the whole session")
+  @DisplayName("refresh rotates; replaying a rotated token after the grace window revokes the whole session")
   void refreshRotationAndReuse() throws Exception {
     String first = registerAndVerify().get("refreshToken").asText();
 
@@ -163,6 +164,7 @@ class AuthFlowIT {
     assertEquals(200, rotated.getStatusCode().value(), rotated.getBody());
     String second = data(rotated).get("refreshToken").asText();
     assertNotEquals(first, second);
+    rotatedAgo(first, java.time.Duration.ofMinutes(2)); // well past the 30-second grace
 
     ResponseEntity<String> replay = post("/api/auth/refresh", Map.of("refreshToken", first), null);
     assertEquals(401, replay.getStatusCode().value());
@@ -171,6 +173,40 @@ class AuthFlowIT {
     ResponseEntity<String> afterReuse =
         post("/api/auth/refresh", Map.of("refreshToken", second), null);
     assertEquals(401, afterReuse.getStatusCode().value(), "Reuse must revoke the newer token too");
+  }
+
+  @Test
+  @DisplayName("grace: the same token sent twice within seconds (two refreshes at once) keeps the session; both new tokens work")
+  void refreshTwiceAtOnce() throws Exception {
+    String first = registerAndVerify().get("refreshToken").asText();
+    ResponseEntity<String> a = post("/api/auth/refresh", Map.of("refreshToken", first), null);
+    ResponseEntity<String> b = post("/api/auth/refresh", Map.of("refreshToken", first), null);
+    assertEquals(200, a.getStatusCode().value(), a.getBody());
+    assertEquals(200, b.getStatusCode().value(), "re-sent within the grace window: " + b.getBody());
+    String fromA = data(a).get("refreshToken").asText();
+    String fromB = data(b).get("refreshToken").asText();
+    assertNotEquals(fromA, fromB);
+    assertEquals(200, post("/api/auth/refresh", Map.of("refreshToken", fromA), null).getStatusCode().value());
+    assertEquals(200, post("/api/auth/refresh", Map.of("refreshToken", fromB), null).getStatusCode().value());
+    assertEquals(200, call(HttpMethod.GET, "/api/auth/me", data(b).get("accessToken").asText(), null).getStatusCode().value());
+  }
+
+  @Test
+  @DisplayName("grace never revives a logged-out session")
+  void graceNotAfterLogout() throws Exception {
+    String first = registerAndVerify().get("refreshToken").asText();
+    String second = data(post("/api/auth/refresh", Map.of("refreshToken", first), null)).get("refreshToken").asText();
+    assertEquals(200, post("/api/auth/logout", Map.of("refreshToken", second), null).getStatusCode().value());
+    ResponseEntity<String> replay = post("/api/auth/refresh", Map.of("refreshToken", first), null);
+    assertEquals(401, replay.getStatusCode().value(), "logged out: no live token, so no grace");
+    assertEquals("MR.AUT.E.008", error(replay));
+  }
+
+  /** Moves a rotated token's revocation into the past, as if the replay came later. */
+  private void rotatedAgo(String refreshToken, java.time.Duration ago) {
+    var row = refreshTokens.findByTokenHash(com.moneyreserve.service.impl.JwtTokenService.sha256(refreshToken)).orElseThrow();
+    row.setRevokedAt(java.time.OffsetDateTime.now().minus(ago));
+    refreshTokens.save(row);
   }
 
   @Test

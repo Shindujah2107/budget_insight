@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 @TestPropertySource(properties = {
     "server.servlet.context-path=/insights",
     "springdoc.api-docs.path=/v3/api-docs/openapi",
+    "springdoc.api-docs.enabled=true",
     "springdoc.swagger-ui.enabled=true"
 })
 class ApiDocsServers_IntegrationTest {

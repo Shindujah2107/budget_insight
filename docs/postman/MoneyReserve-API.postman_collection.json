@@ -3875,6 +3875,212 @@
           }
         }
       ]
+    },
+    {
+      "name": "Ask MR (Premium Insights)",
+      "item": [
+        {
+          "name": "Questions Ask MR can answer now",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/ask/questions?accountId={{accountId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "ask", "questions"],
+              "query": [{"key": "accountId", "value": "{{accountId}}"}]
+            },
+            "description": "entitled (Premium), weeklySummary, questions[{id, available, reason NOT_ENOUGH_DATA | TOO_EARLY}]. 403 MR.ASK.E.001 (Ask MR off) / MR.ASK.E.002 (no Premium and the free teaser off)."
+          }
+        },
+        {
+          "name": "Compare a category (picker)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/ask/categories?accountId={{accountId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "ask", "categories"],
+              "query": [{"key": "accountId", "value": "{{accountId}}"}]
+            },
+            "description": "This month's completed days by category, largest share first: items[{category (with type BILL | ESSENTIAL | FLEXIBLE | EXCLUDED), amount, share, count, delta, changed}], total. TOO_EARLY on the 1st. Same access as questions (free teaser included)."
+          }
+        },
+        {
+          "name": "An answer (facts: headline, drivers, tips, evidence, notes)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/ask/answer?question=CATEGORY_CHANGE&categoryId={{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "ask", "answer"],
+              "query": [
+                {"key": "question", "value": "CATEGORY_CHANGE"},
+                {"key": "categoryId", "value": "{{categoryId}}"}
+              ]
+            },
+            "description": "question SPENDING_CHANGE | CATEGORY_CHANGE (categoryId) | WHERE_MONEY_WENT | BUDGET | IMPROVING | WEEK (week=YYYY-MM-DD); accountId optional. Without Premium: premiumLocked, headline/notes/plain evidence only. 400 MR.ASK.E.003 (bad question)."
+          }
+        },
+        {
+          "name": "Weekly summary (How was my week?)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/ask/weekly",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "ask", "weekly"]
+            },
+            "description": "The WEEK answer for this week (or week=YYYY-MM-DD). 403 MR.ASK.E.001 when Ask MR or the weekly summary is off."
+          }
+        },
+        {
+          "name": "Worth knowing card",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/ask/worth-knowing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "ask", "worth-knowing"]
+            },
+            "description": "card {id, topic, kind, category, delta, period, comparePeriod, question} or no card. At most the admin's number a week; a topic never repeats within 14 days."
+          }
+        },
+        {
+          "name": "Dismiss a Worth knowing card",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/ask/worth-knowing/{{cardId}}/dismiss",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "ask", "worth-knowing", "{{cardId}}", "dismiss"]
+            },
+            "description": "404 MR.ASK.E.004 when the card is not this customer's."
+          }
+        },
+        {
+          "name": "Count an opened piece of evidence",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"question\":\"CATEGORY_CHANGE\"}"},
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/ask/evidence-opened",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "ask", "evidence-opened"]
+            },
+            "description": "Counts per question per day only; nothing about the customer is stored."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — Ask MR",
+      "item": [
+        {
+          "name": "Ask MR suggestion wording (effective view)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/ask-mr-tips",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "admin", "config", "ask-mr-tips"]
+            },
+            "description": "Super Admin. Tips with published and effective wording (EN/SI/TA) and on/off. The switches and thresholds are the budget policy's askMr field."
+          }
+        },
+        {
+          "name": "Draft new wording for a tip",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"textEn\":\"If you'd like, you could review your {category} limit for the rest of the month.\",\"textSi\":\"…{category}…\",\"textTa\":\"…{category}…\",\"active\":true}"},
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/config/ask-mr-tips/{{tipId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "admin", "config", "ask-mr-tips", "{{tipId}}"]
+            },
+            "description": "Super Admin. A draft until POST /admin/config/publish. 400 when a placeholder is added or lost, or the wording blames (irresponsible, wasted, …)."
+          }
+        },
+        {
+          "name": "Ask MR usage (counts)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/ask-mr/usage?days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "admin", "ask-mr", "usage"],
+              "query": [{"key": "days", "value": "30"}]
+            },
+            "description": "Super Admin. Per question per day: shown, evidence, dismissed. No customers, no amounts."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin: re-sort old transactions (V1.31.0)",
+      "item": [
+        {
+          "name": "Preview the re-sort",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/recategorise/preview",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "admin", "recategorise", "preview"]
+            },
+            "description": "Super Admin. payments, customers, userSorted (left alone), groups[{from, to, payments, customers}]. Only auto-categorised payments; never to Other."
+          }
+        },
+        {
+          "name": "Apply the re-sort",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/recategorise/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "admin", "recategorise", "apply"]
+            },
+            "description": "Super Admin. Moves the previewed payments; each move is logged with its old category. Returns the run {id, createdAt, moved}."
+          }
+        },
+        {
+          "name": "Recent re-sort runs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/recategorise/runs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "admin", "recategorise", "runs"]
+            },
+            "description": "Super Admin. The last 20 runs."
+          }
+        },
+        {
+          "name": "Undo a re-sort run",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/insights/admin/recategorise/runs/{{runId}}/undo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "insights", "admin", "recategorise", "runs", "{{runId}}", "undo"]
+            },
+            "description": "Super Admin. Puts back payments still where the run left them (restored); ones changed since are skipped. 409 MR.ADM.E.024 when already undone."
+          }
+        }
+      ]
     }
   ],
   "variable": [

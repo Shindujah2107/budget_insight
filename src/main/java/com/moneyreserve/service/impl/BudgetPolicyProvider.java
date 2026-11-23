@@ -87,6 +87,19 @@ public class BudgetPolicyProvider {
         Boolean.TRUE.equals(p.getAlertCategoryApproaching()),
         Boolean.TRUE.equals(p.getAlertCategoryExceeded()),
         Boolean.TRUE.equals(p.getAlertBudgetExceeded()),
-        Boolean.TRUE.equals(p.getWhatChangedOn()));
+        Boolean.TRUE.equals(p.getWhatChangedOn()),
+        new com.moneyreserve.dto.AskMrSettings(
+            Boolean.TRUE.equals(p.getAskMrOn()),
+            !Boolean.FALSE.equals(p.getAskMrFreeTeaser()),
+            !Boolean.FALSE.equals(p.getAskMrWeeklySummary()),
+            or(p.getAskMrWorthPerWeek(), com.moneyreserve.dto.AskMrSettings.DEFAULTS.worthKnowingPerWeek()),
+            or(p.getAskMrMinAmount(), com.moneyreserve.dto.AskMrSettings.DEFAULTS.minChangeAmount()),
+            or(p.getAskMrMinPct(), com.moneyreserve.dto.AskMrSettings.DEFAULTS.minChangePct()),
+            or(p.getAskMrEarlyDay(), com.moneyreserve.dto.AskMrSettings.DEFAULTS.earlyMonthDay()),
+            or(p.getAskMrOneOffTenths(), com.moneyreserve.dto.AskMrSettings.DEFAULTS.oneOffTenths())));
+  }
+
+  private static int or(Number v, int fallback) {
+    return v == null ? fallback : v.intValue();
   }
 }

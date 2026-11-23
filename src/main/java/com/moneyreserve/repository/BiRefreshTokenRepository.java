@@ -13,6 +13,9 @@ public interface BiRefreshTokenRepository extends JpaRepository<BiRefreshToken, 
 
   Optional<BiRefreshToken> findByTokenHash(String tokenHash);
 
+  /** Whether a sign-in still has a usable refresh token (none after log-out or reuse detection). */
+  boolean existsByFamilyIdAndRevokedAtIsNullAndExpiresAtAfter(UUID familyId, OffsetDateTime now);
+
   @Modifying
   @Query(
       "UPDATE BiRefreshToken t SET t.revokedAt = :now "

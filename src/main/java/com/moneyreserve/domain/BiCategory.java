@@ -65,6 +65,18 @@ public class BiCategory {
   @Column(name = "spend_bucket", length = 8)
   private String spendBucket;
 
+  /**
+   * Ask MR spending type (V1.30.0): BILL, ESSENTIAL, FLEXIBLE or EXCLUDED; null means not set
+   * (treated like FLEXIBLE, without a label). Edited in the Admin Dashboard.
+   */
+  @Column(name = "spend_type", length = 10)
+  private String spendType;
+
+  public static final String TYPE_BILL = "BILL";
+  public static final String TYPE_ESSENTIAL = "ESSENTIAL";
+  public static final String TYPE_FLEXIBLE = "FLEXIBLE";
+  public static final String TYPE_EXCLUDED = "EXCLUDED";
+
   @Column(name = "sort_order", nullable = false)
   private Short sortOrder;
 

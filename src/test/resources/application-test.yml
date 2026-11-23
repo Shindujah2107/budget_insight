@@ -98,6 +98,10 @@ moneyreserve:
     jwt-secret: integration-test-jwt-secret-0123456789abcdef
     otp:
       fixed-code: "123456"
+      # Every test calls from the same local address: the per-address and daily limits are off
+      # here and switched on by AuthCodeLimitsIT itself.
+      max-sends-per-hour-per-ip: 0
+      max-sends-per-day: 0
 
 logging:
   level:

@@ -60,17 +60,17 @@ public class AuthController {
   @Operation(summary = "Start sign-up: texts a 6-digit code to the number")
   @PostMapping("/register")
   public ResponseEntity<ApiResponse<AuthCodeSentResponse>> register(
-      @Valid @RequestBody AuthRegisterRequest request) {
+      @Valid @RequestBody AuthRegisterRequest request, jakarta.servlet.http.HttpServletRequest http) {
     requireEnabled();
-    return ok("We sent a code to your number.", auth.register(request));
+    return ok("We sent a code to your number.", auth.register(request, http.getRemoteAddr()));
   }
 
   @Operation(summary = "Log in: texts a 6-digit code to the number")
   @PostMapping("/login")
   public ResponseEntity<ApiResponse<AuthCodeSentResponse>> login(
-      @Valid @RequestBody AuthLoginRequest request) {
+      @Valid @RequestBody AuthLoginRequest request, jakarta.servlet.http.HttpServletRequest http) {
     requireEnabled();
-    return ok("We sent a code to your number.", auth.login(request));
+    return ok("We sent a code to your number.", auth.login(request, http.getRemoteAddr()));
   }
 
   @Operation(summary = "Check the code and sign in: returns an access token and a refresh token")

@@ -112,6 +112,11 @@ public class DataRightsServiceImpl implements DataRightsService {
           // Erased but never exported: an export of the customer's previous exports would nest
           // their whole history inside itself, once per request they ever made.
           new CustomerTable("dataExports", "BiDataExport", BY_USER, false),
+          // Ask MR (V1.29.0): which "Worth knowing" topics were shown and when (no amounts).
+          new CustomerTable("askMrWorthKnowing", "BiAskMrWorth", BY_USER, true),
+          // Admin re-sort log (V1.31.0): which of the customer's payments a run moved, and from
+          // which category. Erased with them; not exported (it is our bookkeeping, no new data).
+          new CustomerTable("recategoriseMoves", "BiRecategoriseMove", BY_USER, false),
           // The customer's own "always use this category for this merchant" choices (V1.17.0).
           new CustomerTable("merchantChoices", "BiUserMerchantCategory", BY_USER, true),
           // Parents last.
@@ -203,7 +208,7 @@ public class DataRightsServiceImpl implements DataRightsService {
     ObjectNode root = objectMapper.createObjectNode();
     root.put("schemaVersion", SCHEMA_VERSION);
     root.put("exportedAt", now.toString());
-    root.put("service", "MoneyReserve");
+    root.put("service", "RupeeMate");
     root.put(
         "note",
         "Everything Budget Insights holds about you. Compliance events are not included: that "

@@ -100,6 +100,7 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
   private final BudgetPolicyProvider policy;
   private final CategorisationService categorisation;
   private final com.moneyreserve.repository.BiBillerRepository billers;
+  private final com.moneyreserve.repository.BiAskMrTipRepository askMrTips;
   private final com.moneyreserve.repository.BiUserBillRepository userBills;
   private final ObjectMapper objectMapper;
   private final DataSource dataSource;
@@ -288,7 +289,8 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
               change.getOp(),
               id,
               view.convert(payload, AdminCategoryState.class),
-              payload != null && payload.has("spendBucket"));
+              payload != null && payload.has("spendBucket"),
+              payload != null && payload.has("spendType"));
       case MERCHANT_RULE ->
           applyRule(change.getOp(), id, view.convert(payload, AdminMerchantRuleState.class));
       case SENDER -> applySender(change.getOp(), id, view.convert(payload, AdminSenderState.class));
@@ -302,7 +304,21 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
       case BUDGET_POLICY -> applyPolicy(id, view.convert(payload, AdminBudgetPolicyState.class));
       case BILLER ->
           applyBiller(change.getOp(), id, view.convert(payload, com.moneyreserve.dto.AdminBillerState.class));
+      case ASK_MR_TIP -> applyAskMrTip(id, view.convert(payload, com.moneyreserve.dto.AdminAskMrTipState.class));
     };
+  }
+
+  /** Tips are only edited (wording, on/off); their code and the rules that pick them never change. */
+  private UUID applyAskMrTip(UUID id, com.moneyreserve.dto.AdminAskMrTipState s) {
+    com.moneyreserve.domain.BiAskMrTip row =
+        askMrTips.findById(id).orElseThrow(() -> missing(ConfigEntityType.ASK_MR_TIP, id));
+    row.setTextEn(s.textEn());
+    row.setTextSi(s.textSi());
+    row.setTextTa(s.textTa());
+    row.setIsActive(s.active());
+    row.setUpdatedAt(OffsetDateTime.now());
+    askMrTips.saveAndFlush(row);
+    return id;
   }
 
   /**
@@ -417,6 +433,15 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
     row.setAlertCategoryExceeded(s.alertCategoryExceeded());
     row.setAlertBudgetExceeded(s.alertBudgetExceeded());
     row.setWhatChangedOn(s.whatChanged());
+    com.moneyreserve.dto.AskMrSettings ask = s.askMr();
+    row.setAskMrOn(ask.enabled());
+    row.setAskMrFreeTeaser(ask.freeTeaser());
+    row.setAskMrWeeklySummary(ask.weeklySummary());
+    row.setAskMrWorthPerWeek((short) ask.worthKnowingPerWeek());
+    row.setAskMrMinAmount(ask.minChangeAmount());
+    row.setAskMrMinPct((short) ask.minChangePct());
+    row.setAskMrEarlyDay((short) ask.earlyMonthDay());
+    row.setAskMrOneOffTenths((short) ask.oneOffTenths());
     row.setUpdatedAt(OffsetDateTime.now());
     policies.saveAndFlush(row);
     return id;
@@ -425,8 +450,9 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
   /**
    * @param hasBucket false for a draft saved before V1.8.0, whose JSON has no spendBucket: the
    *     category keeps the bucket it has instead of losing it
+   * @param hasType false for a draft saved before V1.30.0 (no spendType): the type is kept
    */
-  private UUID applyCategory(ConfigChangeOp op, UUID id, AdminCategoryState s, boolean hasBucket) {
+  private UUID applyCategory(ConfigChangeOp op, UUID id, AdminCategoryState s, boolean hasBucket, boolean hasType) {
     if (op == ConfigChangeOp.DELETE) {
       categories.flush();
       long used =
@@ -455,6 +481,9 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
     row.setIsActive(s.active());
     if (hasBucket) {
       row.setSpendBucket(s.spendBucket());
+    }
+    if (hasType) {
+      row.setSpendType(s.spendType());
     }
     categories.saveAndFlush(row);
     return id;
@@ -648,6 +677,8 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
         case BUDGET_POLICY -> restoreSimple(type, id, desired, AdminBudgetPolicyState.class, userId);
         case BILLER ->
             restoreSimple(type, id, desired, com.moneyreserve.dto.AdminBillerState.class, userId);
+        case ASK_MR_TIP ->
+            restoreSimple(type, id, desired, com.moneyreserve.dto.AdminAskMrTipState.class, userId);
       }
     }
     int created = (int) changes.count();
@@ -691,6 +722,15 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
       ObjectNode withBucket = ((ObjectNode) desired).deepCopy();
       withBucket.put("spendBucket", ((AdminCategoryState) published).spendBucket());
       desired = withBucket;
+    }
+    if (type == ConfigEntityType.CATEGORY
+        && published != null
+        && desired.isObject()
+        && !desired.has("spendType")) {
+      // A release from before V1.30.0 recorded no Ask MR type; restoring it keeps today's type.
+      ObjectNode withType = ((ObjectNode) desired).deepCopy();
+      withType.put("spendType", ((AdminCategoryState) published).spendType());
+      desired = withType;
     }
     T state = view.convert(desired, stateType);
     ConfigChangeOp op = published == null ? ConfigChangeOp.CREATE : ConfigChangeOp.UPDATE;
@@ -743,6 +783,7 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
               case BANK -> view.banks();
               case BUDGET_POLICY -> view.budgetPolicy();
               case BILLER -> view.billers();
+              case ASK_MR_TIP -> view.askMrTips();
             };
   }
 
@@ -781,6 +822,7 @@ public class AdminChangesetServiceImpl implements AdminChangesetService {
       case BANK -> c.getOp() == ConfigChangeOp.DELETE ? 7 : -1;
       case BUDGET_POLICY -> 5;
       case BILLER -> c.getOp() == ConfigChangeOp.DELETE ? 6 : 4;
+      case ASK_MR_TIP -> 5;
     };
   }
 

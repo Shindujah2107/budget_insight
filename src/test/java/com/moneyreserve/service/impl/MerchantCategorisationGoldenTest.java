@@ -29,7 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Golden regression for categorisation: the rules exactly as migration V1.12.0 ships them, run
+ * Golden regression for categorisation: the rules exactly as migration V1.31.0 leaves them, run
  * through the real {@link CategorisationServiceImpl} (L0 message type, L1 clean-up, L2–L4 rules,
  * L5 OTHER).
  *
@@ -45,7 +45,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * <p>Adding keywords should only ever move rows from OTHER to the right category. Add a row here
  * for every new false positive found in production before fixing it.
  */
-@DisplayName("Merchant categorisation golden regression (V1.12.0 rules)")
+@DisplayName("Merchant categorisation golden regression (V1.31.0 rules)")
 class MerchantCategorisationGoldenTest {
 
   static final double MIN_ACCURACY = 95.0;
@@ -62,7 +62,9 @@ class MerchantCategorisationGoldenTest {
         List.of(
             "TRANSPORT", "UTILITIES", "HEALTH_CARE", "DEBT_PAYMENTS", "DINING_OUT", "ENTERTAINMENT",
             "PERSONAL_CARE", "SHOPPING", "GIFTS_DONATION", "EDUCATION", "WORK", "TRAVEL", "GYM",
-            "SUBSCRIPTIONS", "TRANSFERS", "BILLS_UTILITIES", "CASH_WITHDRAWAL", "OTHER")) {
+            "SUBSCRIPTIONS", "TRANSFERS", "BILLS_UTILITIES", "CASH_WITHDRAWAL", "OTHER",
+            "GROCERIES", "FUEL", "HOUSEHOLD", "FOOD_DELIVERY", "MOBILE_DATA", "INTERNET_TV", "RENT_HOUSING",
+            "INSURANCE", "GAMING")) {
       BiCategory c =
           BiCategory.builder().id(UUID.randomUUID()).code(code).nameEn(code).iconKey("ic").isActive(true).build();
       byCode.put(code, c);
@@ -80,12 +82,12 @@ class MerchantCategorisationGoldenTest {
               .isActive(true)
               .build());
     }
-    assertEquals(15, rules.size(), "V1.12.0 should define 15 rules");
+    assertEquals(24, rules.size(), "V1.31.0 should define 24 rules");
     lenient().when(maps.findAllByIsActiveTrueOrderByPriorityAsc()).thenReturn(rules);
     service = new CategorisationServiceImpl(maps, categories, new InsightsProperties());
   }
 
-  /** The real categoriser over the V1.12.0 rules, with every category active (also used by the DEV report). */
+  /** The real categoriser over the V1.31.0 rules, with every category active (also used by the DEV report). */
   static CategorisationServiceImpl serviceWithMigratedRules() {
     if (service == null) {
       setUp();

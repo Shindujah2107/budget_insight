@@ -342,7 +342,7 @@ public class BillServiceImpl implements BillService {
             .categoryId(
                 request.categoryId() != null
                     ? request.categoryId()
-                    : categoriesOn() && bill.getCategoryId() != null ? bill.getCategoryId() : billCategory())
+                    : categoriesOn() && bill.getCategoryId() != null ? bill.getCategoryId() : billCategory(bill))
             .clientRef(request.clientRef())
             .origin(request.originBankCode() != null ? PaymentPairing.ATTEMPT : PaymentPairing.BILL)
             .originBankCode(request.originBankCode())
@@ -1014,13 +1014,43 @@ public class BillServiceImpl implements BillService {
         .orElseThrow(() -> new BudgetInsightsException(ErrorCode.INSIGHTS_BILL_INVALID));
   }
 
-  /** Bills & utilities, else Other: a bill paid by hand is categorised like its kind. */
-  private UUID billCategory() {
-    return categories
-        .findByCodeAndIsActiveTrue("BILLS_UTILITIES")
-        .or(() -> categories.findByCodeAndIsActiveTrue(BiCategory.OTHER_CODE))
-        .map(c -> c.getId())
-        .orElse(null);
+  /**
+   * A bill paid by hand is categorised like its kind: the category for the biller's type (V1.31.0:
+   * electricity and water, mobile, subscriptions…), else Bills & utilities, then Electricity &
+   * water, else Other — the first one that is active.
+   */
+  private UUID billCategory(BiUserBill bill) {
+    String typed = null;
+    if (bill.getBillerId() != null) {
+      typed = billers.findById(bill.getBillerId()).map(b -> categoryFor(b.getBillType())).orElse(null);
+    }
+    List<String> codes = new ArrayList<>();
+    if (typed != null) {
+      codes.add(typed);
+    }
+    codes.addAll(List.of("BILLS_UTILITIES", "UTILITIES", BiCategory.OTHER_CODE));
+    for (String code : codes) {
+      Optional<BiCategory> found = categories.findByCodeAndIsActiveTrue(code);
+      if (found.isPresent()) {
+        return found.get().getId();
+      }
+    }
+    return null;
+  }
+
+  static String categoryFor(com.moneyreserve.domain.BillType type) {
+    if (type == null) {
+      return null;
+    }
+    return switch (type) {
+      case ELECTRICITY, WATER -> "UTILITIES";
+      case TELECOM -> "MOBILE_DATA";
+      case STREAMING -> "SUBSCRIPTIONS";
+      case INSURANCE -> "INSURANCE";
+      case LOAN, CARD -> "DEBT_PAYMENTS";
+      case RENT -> "RENT_HOUSING";
+      case OTHER -> null;
+    };
   }
 
   @Override

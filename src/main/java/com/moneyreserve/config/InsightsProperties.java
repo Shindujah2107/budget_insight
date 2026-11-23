@@ -620,7 +620,17 @@ public class InsightsProperties {
                 "ic_transfers",
                 "ic_bills_utilities",
                 "ic_cash_withdrawal",
-                "ic_other"));
+                "ic_other",
+                // V1.31.0 day-to-day categories (app glyphs added with them).
+                "ic_groceries",
+                "ic_fuel",
+                "ic_mobile_data",
+                "ic_internet_tv",
+                "ic_rent_housing",
+                "ic_insurance",
+                "ic_household",
+                "ic_food_delivery",
+                "ic_gaming"));
 
     /**
      * Initial bank list only. Since V1.6.0 the banks live in {@code bi_bank} and are managed from

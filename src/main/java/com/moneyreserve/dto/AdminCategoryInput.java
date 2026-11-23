@@ -33,4 +33,24 @@ public record AdminCategoryInput(
     @Pattern(
             regexp = "^(NEEDS|WANTS|SAVINGS|NONE)$",
             message = "spendBucket must be NEEDS, WANTS, SAVINGS or NONE")
-        String spendBucket) {}
+        String spendBucket,
+    // Ask MR type (V1.30.0); NONE clears it, leaving it out keeps the current one.
+    @Pattern(
+            regexp = "^(BILL|ESSENTIAL|FLEXIBLE|EXCLUDED|NONE)$",
+            message = "spendType must be BILL, ESSENTIAL, FLEXIBLE, EXCLUDED or NONE")
+        String spendType) {
+
+  /** Before V1.30.0 (no spending type: the current one is kept). */
+  public AdminCategoryInput(
+      String code,
+      String nameEn,
+      String nameSi,
+      String nameTa,
+      String iconKey,
+      String colourHex,
+      Integer sortOrder,
+      Boolean active,
+      String spendBucket) {
+    this(code, nameEn, nameSi, nameTa, iconKey, colourHex, sortOrder, active, spendBucket, null);
+  }
+}

@@ -20,7 +20,9 @@ public record AdminBudgetPolicyInput(
     @NotNull Boolean alertCategoryExceeded,
     @NotNull Boolean alertBudgetExceeded,
     /** "What changed? — Premium Insights" (V1.28.0); absent = off. */
-    Boolean whatChanged) {
+    Boolean whatChanged,
+    /** Ask MR settings (V1.29.0); absent = the defaults (off). */
+    AskMrSettings askMr) {
 
   public AdminBudgetPolicyState toState() {
     return new AdminBudgetPolicyState(
@@ -33,6 +35,7 @@ public record AdminBudgetPolicyInput(
         alertCategoryApproaching,
         alertCategoryExceeded,
         alertBudgetExceeded,
-        Boolean.TRUE.equals(whatChanged));
+        Boolean.TRUE.equals(whatChanged),
+        askMr);
   }
 }

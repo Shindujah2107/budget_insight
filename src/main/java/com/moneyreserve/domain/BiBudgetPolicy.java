@@ -62,6 +62,39 @@ public class BiBudgetPolicy {
   @Column(name = "what_changed_on", nullable = false)
   private Boolean whatChangedOn = Boolean.FALSE;
 
+  // Ask MR (Premium Insights, V1.29.0); see AskMrSettings.
+  @Builder.Default
+  @Column(name = "ask_mr_on", nullable = false)
+  private Boolean askMrOn = Boolean.FALSE;
+
+  @Builder.Default
+  @Column(name = "ask_mr_free_teaser", nullable = false)
+  private Boolean askMrFreeTeaser = Boolean.TRUE;
+
+  @Builder.Default
+  @Column(name = "ask_mr_weekly_summary", nullable = false)
+  private Boolean askMrWeeklySummary = Boolean.TRUE;
+
+  @Builder.Default
+  @Column(name = "ask_mr_worth_per_week", nullable = false)
+  private Short askMrWorthPerWeek = 2;
+
+  @Builder.Default
+  @Column(name = "ask_mr_min_amount", nullable = false)
+  private Integer askMrMinAmount = 1000;
+
+  @Builder.Default
+  @Column(name = "ask_mr_min_pct", nullable = false)
+  private Short askMrMinPct = 15;
+
+  @Builder.Default
+  @Column(name = "ask_mr_early_day", nullable = false)
+  private Short askMrEarlyDay = 5;
+
+  @Builder.Default
+  @Column(name = "ask_mr_one_off_tenths", nullable = false)
+  private Short askMrOneOffTenths = 20;
+
   @Column(name = "updated_at", nullable = false)
   private OffsetDateTime updatedAt;
 }

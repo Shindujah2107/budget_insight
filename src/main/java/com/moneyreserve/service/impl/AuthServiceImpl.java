@@ -61,6 +61,7 @@ public class AuthServiceImpl implements AuthService {
   private final JwtTokenService tokens;
   private final SmsSender sms;
   private final DataRightsService dataRights;
+  private final AuthCodeRequests codeRequests;
 
   // ---------------------------------------------------------------------------------
   // Codes
@@ -69,6 +70,12 @@ public class AuthServiceImpl implements AuthService {
   @Override
   @Transactional
   public AuthCodeSentResponse register(AuthRegisterRequest request) {
+    return register(request, null);
+  }
+
+  @Override
+  @Transactional
+  public AuthCodeSentResponse register(AuthRegisterRequest request, String clientIp) {
     String phone = normalisePhone(request.phone());
     String email = request.email() == null || request.email().isBlank() ? null : request.email().trim();
     BiAppUser user = users.findByPhone(phone).orElse(null);
@@ -82,21 +89,27 @@ public class AuthServiceImpl implements AuthService {
     user.setFullName(request.fullName().trim());
     user.setEmail(email);
     users.save(user);
-    return sendCode(phone, OtpPurpose.REGISTER);
+    return sendCode(phone, OtpPurpose.REGISTER, clientIp);
   }
 
   @Override
   @Transactional
   public AuthCodeSentResponse login(AuthLoginRequest request) {
+    return login(request, null);
+  }
+
+  @Override
+  @Transactional
+  public AuthCodeSentResponse login(AuthLoginRequest request, String clientIp) {
     String phone = normalisePhone(request.phone());
     BiAppUser user =
         users
             .findByPhone(phone)
             .orElseThrow(() -> new BudgetInsightsException(ErrorCode.AUTH_ACCOUNT_NOT_FOUND));
-    return sendCode(phone, user.isVerified() ? OtpPurpose.LOGIN : OtpPurpose.REGISTER);
+    return sendCode(phone, user.isVerified() ? OtpPurpose.LOGIN : OtpPurpose.REGISTER, clientIp);
   }
 
-  private AuthCodeSentResponse sendCode(String phone, OtpPurpose purpose) {
+  private AuthCodeSentResponse sendCode(String phone, OtpPurpose purpose, String clientIp) {
     AuthProperties.Otp rules = properties.getOtp();
     OffsetDateTime now = OffsetDateTime.now();
 
@@ -107,9 +120,39 @@ public class AuthServiceImpl implements AuthService {
         throw refusal(ErrorCode.AUTH_CODE_RESEND_TOO_SOON, secondsUntil(allowedAt, now));
       }
     }
-    if (otps.countByPhoneAndCreatedAtAfter(phone, now.minusHours(1)) >= rules.getMaxSendsPerHour()) {
+    // Request limits (V1.32.0). Every request counts, also one whose SMS then fails.
+    String phoneKey = codeRequests.phoneKey(phone);
+    String ipKey = codeRequests.ipKey(clientIp);
+    OffsetDateTime hourAgo = now.minusHours(1);
+    if (otps.countByPhoneAndCreatedAtAfter(phone, hourAgo) >= rules.getMaxSendsPerHour()
+        || codeRequests.forPhoneSince(phoneKey, hourAgo) >= rules.getMaxSendsPerHour()) {
       throw refusal(ErrorCode.AUTH_TOO_MANY_ATTEMPTS, Duration.ofHours(1).toSeconds());
     }
+    if (rules.getMaxSendsPerHourPerIp() > 0
+        && ipKey != null
+        && codeRequests.forIpSince(ipKey, hourAgo) >= rules.getMaxSendsPerHourPerIp()) {
+      log.warn("Sign-in code requests over the hourly limit for one network address (key {})", ipKey.substring(0, 8));
+      throw refusal(ErrorCode.AUTH_TOO_MANY_ATTEMPTS, Duration.ofHours(1).toSeconds());
+    }
+    if (rules.getMaxSendsPerDay() > 0) {
+      long today = codeRequests.allSince(now.minusDays(1));
+      if (today >= rules.getMaxSendsPerDay()) {
+        log.error(
+            "ALERT sign-in SMS daily cap reached ({} requests in 24 h, cap {}): no codes are sent until it eases",
+            today,
+            rules.getMaxSendsPerDay());
+        throw new BudgetInsightsException(ErrorCode.AUTH_SMS_FAILED);
+      }
+      long alertAt = (long) Math.ceil(rules.getMaxSendsPerDay() * rules.getDailyAlertPct() / 100.0);
+      if (today + 1 == alertAt) {
+        log.warn(
+            "ALERT sign-in SMS at {}% of the daily cap ({} of {} in 24 h)",
+            rules.getDailyAlertPct(),
+            today + 1,
+            rules.getMaxSendsPerDay());
+      }
+    }
+    codeRequests.record(phoneKey, ipKey, now);
 
     // Only the newest code works.
     for (BiAuthOtp open : otps.findByPhoneAndConsumedAtIsNull(phone)) {
@@ -132,7 +175,7 @@ public class AuthServiceImpl implements AuthService {
     try {
       sms.send(
           phone,
-          "Your MoneyReserve code is "
+          "Your RupeeMate code is "
               + code
               + ". It expires in "
               + rules.getTtl().toMinutes()
@@ -194,6 +237,18 @@ public class AuthServiceImpl implements AuthService {
         refreshTokens
             .findByTokenHash(JwtTokenService.sha256(refreshToken))
             .orElseThrow(() -> new BudgetInsightsException(ErrorCode.AUTH_SESSION_EXPIRED));
+    if (token.getRevokedAt() != null && reusedWithinGrace(token, now)) {
+      // The phone sent the same token twice within seconds (two requests refreshing at once, or
+      // the answer to the first one never arrived) while the sign-in is still alive. Answer it
+      // with another pair in the same session rather than signing the customer out.
+      log.info("Refresh token re-presented within the grace window; same session continues");
+      BiAppUser user =
+          users
+              .findById(token.getUserId())
+              .orElseThrow(() -> new BudgetInsightsException(ErrorCode.AUTH_SESSION_EXPIRED));
+      applyConfiguredRole(user);
+      return issue(user, token.getFamilyId());
+    }
     if (token.getRevokedAt() != null) {
       // Already rotated or logged out, yet presented again: the token has been copied. End every
       // session descended from the same sign-in so whoever holds a copy is out too.
@@ -211,6 +266,22 @@ public class AuthServiceImpl implements AuthService {
     token.setRevokedAt(now);
     applyConfiguredRole(user);
     return issue(user, token.getFamilyId());
+  }
+
+  /**
+   * A rotated token presented again shortly after its rotation, while the same sign-in still has a
+   * live token. After a log-out or a reuse revocation no live token remains, so this is false and
+   * the reuse is treated as theft as before. The window is deliberately short: a copied token is
+   * only useful in it if it was copied and used within seconds of the real phone rotating it.
+   */
+  private boolean reusedWithinGrace(BiRefreshToken token, OffsetDateTime now) {
+    java.time.Duration grace = properties.getRefreshReuseGrace();
+    return grace != null
+        && !grace.isZero()
+        && !grace.isNegative()
+        && token.getExpiresAt().isAfter(now)
+        && token.getRevokedAt().plus(grace).isAfter(now)
+        && refreshTokens.existsByFamilyIdAndRevokedAtIsNullAndExpiresAtAfter(token.getFamilyId(), now);
   }
 
   @Override

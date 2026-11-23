@@ -35,6 +35,7 @@ final class AdminChangeLabels {
     FIELD_NAMES.put("fieldMap", "field map");
     FIELD_NAMES.put("builderSpec", "template definition");
     FIELD_NAMES.put("spendBucket", "bucket");
+    FIELD_NAMES.put("spendType", "Ask Mate type");
     FIELD_NAMES.put("bankName", "bank name");
     FIELD_NAMES.put("needsPct", "Needs %");
     FIELD_NAMES.put("wantsPct", "Wants %");
@@ -46,6 +47,10 @@ final class AdminChangeLabels {
     FIELD_NAMES.put("alertCategoryExceeded", "category exceeded alert");
     FIELD_NAMES.put("alertBudgetExceeded", "monthly budget exceeded alert");
     FIELD_NAMES.put("whatChanged", "What changed? — Premium Insights");
+    FIELD_NAMES.put("askMr", "Ask Mate — Premium Insights");
+    FIELD_NAMES.put("textEn", "English wording");
+    FIELD_NAMES.put("textSi", "Sinhala wording");
+    FIELD_NAMES.put("textTa", "Tamil wording");
     FIELD_NAMES.put("billType", "bill type");
     FIELD_NAMES.put("terms", "name terms");
     FIELD_NAMES.put("tolerancePct", "amount tolerance");
@@ -55,6 +60,7 @@ final class AdminChangeLabels {
   private static final Set<String> SHOW_VALUES =
       Set.of(
           "spendBucket",
+          "spendType",
           "bankName",
           "needsPct",
           "wantsPct",
@@ -83,6 +89,7 @@ final class AdminChangeLabels {
           case BANK -> state.path("bankCode").asText() + " " + state.path("bankName").asText();
           case BUDGET_POLICY -> "";
           case BILLER -> state.path("code").asText();
+          case ASK_MR_TIP -> state.path("code").asText();
         };
     if (key.isBlank()) {
       return entity.label();
@@ -148,9 +155,9 @@ final class AdminChangeLabels {
   }
 
   private static String value(String field, JsonNode v) {
-    if ("spendBucket".equals(field)) {
+    if ("spendBucket".equals(field) || "spendType".equals(field)) {
       if (v == null || v.isNull() || v.asText().isBlank()) {
-        return "Not counted";
+        return "spendType".equals(field) ? "Not set" : "Not counted";
       }
       String t = v.asText();
       return t.charAt(0) + t.substring(1).toLowerCase(java.util.Locale.ROOT);

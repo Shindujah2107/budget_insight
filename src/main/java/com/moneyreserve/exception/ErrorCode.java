@@ -77,16 +77,22 @@ public enum ErrorCode {
   INSIGHTS_BILL_INVALID(
       "MR.BIL.E.002", HttpStatus.BAD_REQUEST, "Please check the bill's name, amount and date."),
   INSIGHTS_BILL_PREMIUM(
-      "MR.BIL.E.003", HttpStatus.FORBIDDEN, "This bill feature is part of MoneyReserve Premium."),
+      "MR.BIL.E.003", HttpStatus.FORBIDDEN, "This bill feature is part of RupeeMate Premium."),
 
   // "What changed?" (Premium Insights, V1.28.0). Two distinct refusals: the feature is switched
   // off for everyone, or this customer is not entitled to Premium.
   INSIGHTS_WHAT_CHANGED_DISABLED(
       "MR.WCH.E.001", HttpStatus.FORBIDDEN, "This insight isn't available right now."),
   INSIGHTS_WHAT_CHANGED_PREMIUM(
-      "MR.WCH.E.002", HttpStatus.FORBIDDEN, "This insight is part of MoneyReserve Premium."),
+      "MR.WCH.E.002", HttpStatus.FORBIDDEN, "This insight is part of RupeeMate Premium."),
   INSIGHTS_WHAT_CHANGED_PERIOD(
       "MR.WCH.E.003", HttpStatus.BAD_REQUEST, "Please choose this month or an earlier one."),
+
+  // Ask MR (Premium Insights, V1.29.0)
+  ASK_MR_DISABLED("MR.ASK.E.001", HttpStatus.FORBIDDEN, "Ask Mate isn't available right now."),
+  ASK_MR_PREMIUM("MR.ASK.E.002", HttpStatus.FORBIDDEN, "Ask Mate is part of RupeeMate Premium."),
+  ASK_MR_BAD_REQUEST("MR.ASK.E.003", HttpStatus.BAD_REQUEST, "Ask Mate couldn't read that question."),
+  ASK_MR_NOT_FOUND("MR.ASK.E.004", HttpStatus.NOT_FOUND, "That card is no longer available."),
 
   // Categories
   INSIGHTS_CATEGORY_INVALID(
@@ -229,6 +235,9 @@ public enum ErrorCode {
       "MR.ADM.E.023",
       HttpStatus.CONFLICT,
       "This bank is still used by SMS senders, templates or customer data."),
+  /** V1.31.0: a re-sort run can be undone once. */
+  ADMIN_RESORT_ALREADY_UNDONE(
+      "MR.ADM.E.024", HttpStatus.CONFLICT, "This re-sort has already been undone."),
 
   // ---------------------------------------------------------------------------------
   // App sign-in (AUT): mobile number + SMS one-time code, then JWTs issued by this service.

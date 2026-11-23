@@ -86,7 +86,7 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
     drafts.begin(ifMatch);
     Item<AdminCategoryState> item = require(id);
     requireChangeable(item);
-    AdminCategoryState desired = toState(input, item.effective().spendBucket());
+    AdminCategoryState desired = toState(input, item.effective());
     if (item.published() != null && !item.published().code().equals(desired.code())) {
       throw new BudgetInsightsException(
           ErrorCode.ADMIN_SYSTEM_ITEM_LOCKED,
@@ -330,12 +330,19 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
     }
   }
 
-  /** {@code currentBucket} is kept when the input leaves {@code spendBucket} out. */
-  private static AdminCategoryState toState(AdminCategoryInput in, String currentBucket) {
+  /**
+   * {@code current}'s bucket and type are kept when the input leaves {@code spendBucket} or
+   * {@code spendType} out.
+   */
+  private static AdminCategoryState toState(AdminCategoryInput in, AdminCategoryState current) {
     String bucket =
         in.spendBucket() == null
-            ? currentBucket
+            ? current == null ? null : current.spendBucket()
             : "NONE".equals(in.spendBucket()) ? null : in.spendBucket();
+    String type =
+        in.spendType() == null
+            ? current == null ? null : current.spendType()
+            : "NONE".equals(in.spendType()) ? null : in.spendType();
     return new AdminCategoryState(
         in.code().trim().toUpperCase(Locale.ROOT),
         in.nameEn().trim(),
@@ -345,7 +352,8 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
         blankToNull(in.colourHex()),
         in.sortOrder(),
         in.active(),
-        bucket);
+        bucket,
+        type);
   }
 
   private static ConfigChangeOp opFor(AdminCategoryState published, AdminCategoryState desired) {

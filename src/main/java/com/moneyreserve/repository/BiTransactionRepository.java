@@ -30,6 +30,33 @@ import org.springframework.data.repository.query.Param;
  */
 public interface BiTransactionRepository extends JpaRepository<BiTransaction, UUID> {
 
+  /**
+   * Payments the app categorised by itself (never one a person chose), after {@code after} in id
+   * order, for the admin "Re-sort old transactions" run (V1.31.0). Money moves are left out.
+   */
+  @Query(
+      """
+      SELECT t FROM BiTransaction t
+      WHERE t.deletedAt IS NULL
+        AND t.id > :after
+        AND (t.isUserCategorised IS NULL OR t.isUserCategorised = FALSE)
+        AND (t.categorySource IS NULL OR t.categorySource <> com.moneyreserve.domain.CategorySource.USER)
+        AND t.movement IS NULL
+        AND t.categoryId IS NOT NULL
+      ORDER BY t.id
+      """)
+  List<BiTransaction> findAutoCategorisedAfter(
+      @Param("after") UUID after, org.springframework.data.domain.Pageable page);
+
+  /** Payments a person categorised (left alone by a re-sort). */
+  @Query(
+      """
+      SELECT COUNT(t) FROM BiTransaction t
+      WHERE t.deletedAt IS NULL
+        AND (t.isUserCategorised = TRUE OR t.categorySource = com.moneyreserve.domain.CategorySource.USER)
+      """)
+  long countUserCategorised();
+
   Optional<BiTransaction> findByIdAndUserIdAndDeletedAtIsNull(UUID id, UUID userId);
 
   boolean existsByUserIdAndIdempotencyKey(UUID userId, String idempotencyKey);
@@ -654,4 +681,43 @@ public interface BiTransactionRepository extends JpaRepository<BiTransaction, UU
       @Param("userId") UUID userId,
       @Param("allAccounts") boolean allAccounts,
       @Param("accountIds") java.util.Collection<UUID> accountIds);
+
+  // ---------------------------------------------------------------------------------
+  // Ask MR (V1.29.0)
+  // ---------------------------------------------------------------------------------
+
+  /** Every comparable spending row in the range (all categories), oldest first. */
+  @Query(
+      "SELECT t FROM BiTransaction t WHERE"
+          + COMPARABLE_SPEND
+          + " ORDER BY t.txnDate ASC, t.txnTimestamp ASC NULLS LAST, t.createdAt ASC, t.id ASC")
+  List<BiTransaction> listComparableSpend(
+      @Param("userId") UUID userId,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to,
+      @Param("currency") String currency,
+      @Param("allAccounts") boolean allAccounts,
+      @Param("accountIds") java.util.Collection<UUID> accountIds);
+
+  /** Money in recorded since {@code from} (not moves between the customer's own accounts). */
+  @Query(
+      """
+      SELECT COUNT(t) FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.direction = com.moneyreserve.domain.TxnDirection.CREDIT
+        AND t.txnDate >= :from
+        AND t.deletedAt IS NULL
+        AND t.movement IS NULL
+      """)
+  long countIncomeSince(@Param("userId") UUID userId, @Param("from") LocalDate from);
+
+  /** The newest transaction that came from a bank SMS, if any. */
+  @Query(
+      """
+      SELECT MAX(t.txnDate) FROM BiTransaction t
+      WHERE t.userId = :userId
+        AND t.deletedAt IS NULL
+        AND t.source IN (com.moneyreserve.domain.TxnSource.SMS_ANDROID, com.moneyreserve.domain.TxnSource.SMS_IOS)
+      """)
+  LocalDate latestSmsRecordedOn(@Param("userId") UUID userId);
 }

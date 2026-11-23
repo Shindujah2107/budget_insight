@@ -19,10 +19,16 @@ public interface AuthService {
   /** Starts sign-up: records the pending account and texts a REGISTER code. */
   AuthCodeSentResponse register(AuthRegisterRequest request);
 
+  /** As {@link #register(AuthRegisterRequest)}, counting the request against the caller's address. */
+  AuthCodeSentResponse register(AuthRegisterRequest request, String clientIp);
+
   /**
    * Texts a LOGIN code, or a REGISTER code when the number started sign-up but never finished it.
    */
   AuthCodeSentResponse login(AuthLoginRequest request);
+
+  /** As {@link #login(AuthLoginRequest)}, counting the request against the caller's address. */
+  AuthCodeSentResponse login(AuthLoginRequest request, String clientIp);
 
   /** Checks the code and signs the customer in. */
   AuthTokenResponse verify(AuthVerifyRequest request);
