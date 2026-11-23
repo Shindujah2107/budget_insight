@@ -166,7 +166,9 @@ moneyreserve:
     jwt-secret: ${BI_JWT_SECRET:}
     issuer: moneyreserve-api
     access-token-ttl: 15m
-    refresh-token-ttl: 30d
+    # Idle limit: each refresh starts a new period, so a customer who opens the app at least once
+    # in this time never needs another sign-in code (each code costs an SMS).
+    refresh-token-ttl: ${REFRESH_TOKEN_TTL:90d}
     otp:
       length: 6
       ttl: 5m

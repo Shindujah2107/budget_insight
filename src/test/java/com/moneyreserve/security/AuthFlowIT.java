@@ -156,7 +156,7 @@ class AuthFlowIT {
   }
 
   @Test
-  @DisplayName("refresh rotates; replaying a rotated token after the grace window revokes the whole session")
+  @DisplayName("refresh rotates; replaying a rotated token after its replacement was used revokes the whole session")
   void refreshRotationAndReuse() throws Exception {
     String first = registerAndVerify().get("refreshToken").asText();
 
@@ -164,15 +164,80 @@ class AuthFlowIT {
     assertEquals(200, rotated.getStatusCode().value(), rotated.getBody());
     String second = data(rotated).get("refreshToken").asText();
     assertNotEquals(first, second);
+    ResponseEntity<String> used = post("/api/auth/refresh", Map.of("refreshToken", second), null);
+    assertEquals(200, used.getStatusCode().value(), used.getBody());
+    String third = data(used).get("refreshToken").asText();
     rotatedAgo(first, java.time.Duration.ofMinutes(2)); // well past the 30-second grace
+    rotatedAgo(second, java.time.Duration.ofMinutes(1));
 
     ResponseEntity<String> replay = post("/api/auth/refresh", Map.of("refreshToken", first), null);
     assertEquals(401, replay.getStatusCode().value());
     assertEquals("MR.AUT.E.008", error(replay));
 
     ResponseEntity<String> afterReuse =
-        post("/api/auth/refresh", Map.of("refreshToken", second), null);
+        post("/api/auth/refresh", Map.of("refreshToken", third), null);
     assertEquals(401, afterReuse.getStatusCode().value(), "Reuse must revoke the newer token too");
+  }
+
+  @Test
+  @DisplayName("lost reply: a rotated token sent again after the grace window, its replacement never used, keeps the session")
+  void refreshAfterLostReply() throws Exception {
+    String first = registerAndVerify().get("refreshToken").asText();
+    // The server rotates, but the answer never reaches the phone: it keeps the old token.
+    String undelivered =
+        data(post("/api/auth/refresh", Map.of("refreshToken", first), null)).get("refreshToken").asText();
+    rotatedAgo(first, java.time.Duration.ofHours(3)); // the next launch, long after the grace window
+
+    ResponseEntity<String> again = post("/api/auth/refresh", Map.of("refreshToken", first), null);
+    assertEquals(200, again.getStatusCode().value(), "same sign-in continues, no new code: " + again.getBody());
+    String fresh = data(again).get("refreshToken").asText();
+    assertEquals(200, call(HttpMethod.GET, "/api/auth/me", data(again).get("accessToken").asText(), null).getStatusCode().value());
+
+    // It happens twice in a row (another lost answer): still the same sign-in.
+    rotatedAgo(first, java.time.Duration.ofHours(1));
+    ResponseEntity<String> twice = post("/api/auth/refresh", Map.of("refreshToken", first), null);
+    assertEquals(200, twice.getStatusCode().value(), twice.getBody());
+    String latest = data(twice).get("refreshToken").asText();
+    assertNotEquals(fresh, latest);
+    assertEquals(200, post("/api/auth/refresh", Map.of("refreshToken", latest), null).getStatusCode().value());
+    assertNotNull(undelivered);
+  }
+
+  @Test
+  @DisplayName("lost reply never helps a copy: once the phone uses its new token, the old and the undelivered ones revoke the session")
+  void lostReplyThenCopy() throws Exception {
+    String first = registerAndVerify().get("refreshToken").asText();
+    String undelivered =
+        data(post("/api/auth/refresh", Map.of("refreshToken", first), null)).get("refreshToken").asText();
+    rotatedAgo(first, java.time.Duration.ofHours(3));
+    String recovered =
+        data(post("/api/auth/refresh", Map.of("refreshToken", first), null)).get("refreshToken").asText();
+    // The phone carries on normally with the recovered token.
+    ResponseEntity<String> normal = post("/api/auth/refresh", Map.of("refreshToken", recovered), null);
+    assertEquals(200, normal.getStatusCode().value(), normal.getBody());
+    String current = data(normal).get("refreshToken").asText();
+    rotatedAgo(recovered, java.time.Duration.ofHours(1));
+    rotatedAgo(undelivered, java.time.Duration.ofHours(3));
+
+    ResponseEntity<String> copy = post("/api/auth/refresh", Map.of("refreshToken", undelivered), null);
+    assertEquals(401, copy.getStatusCode().value(), "replacement already used: a copy");
+    assertEquals(401, post("/api/auth/refresh", Map.of("refreshToken", current), null).getStatusCode().value(),
+        "reuse ends the whole sign-in");
+  }
+
+  @Test
+  @DisplayName("sessions last 90 days from the latest refresh (idle limit, not a cap)")
+  void ninetyDaySlidingSession() throws Exception {
+    var tokens = registerAndVerify();
+    assertEquals(java.time.Duration.ofDays(90).toSeconds(), tokens.get("refreshExpiresIn").asLong());
+    String first = tokens.get("refreshToken").asText();
+    var row = refreshTokens.findByTokenHash(com.moneyreserve.service.impl.JwtTokenService.sha256(first)).orElseThrow();
+    row.setExpiresAt(java.time.OffsetDateTime.now().plusDays(1)); // nearly idle for 90 days
+    refreshTokens.save(row);
+    String next = data(post("/api/auth/refresh", Map.of("refreshToken", first), null)).get("refreshToken").asText();
+    var nextRow = refreshTokens.findByTokenHash(com.moneyreserve.service.impl.JwtTokenService.sha256(next)).orElseThrow();
+    assertTrue(nextRow.getExpiresAt().isAfter(java.time.OffsetDateTime.now().plusDays(89)),
+        "using the app starts a new 90-day period: " + nextRow.getExpiresAt());
   }
 
   @Test

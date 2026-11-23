@@ -27,6 +27,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -250,8 +251,28 @@ public class AuthServiceImpl implements AuthService {
       return issue(user, token.getFamilyId());
     }
     if (token.getRevokedAt() != null) {
-      // Already rotated or logged out, yet presented again: the token has been copied. End every
-      // session descended from the same sign-in so whoever holds a copy is out too.
+      BiRefreshToken unused = unusedReplacement(token, now).orElse(null);
+      if (unused != null) {
+        // Rotated, but its replacement was never used: the answer that carried it never reached
+        // the phone (weak signal, app closed mid-request). Retire the undelivered replacement and
+        // continue the same sign-in, instead of asking for a new code (an SMS) as if stolen.
+        log.info("Refresh token re-presented after an undelivered rotation; same session continues");
+        BiAppUser user =
+            users
+                .findById(token.getUserId())
+                .orElseThrow(() -> new BudgetInsightsException(ErrorCode.AUTH_SESSION_EXPIRED));
+        unused.setRevokedAt(now);
+        applyConfiguredRole(user);
+        Issued issued = issueRecorded(user, token.getFamilyId());
+        // Both now point at the new token: whichever of the two the phone still holds can recover
+        // once more, and once the new token is used, either one presented again is a copy.
+        unused.setReplacedById(issued.tokenId());
+        token.setReplacedById(issued.tokenId());
+        return issued.response();
+      }
+      // Already rotated and the replacement used, or logged out, yet presented again: the token
+      // has been copied. End every session descended from the same sign-in so whoever holds a
+      // copy is out too.
       log.warn("Refresh token reuse detected; revoking its session family");
       refreshTokens.revokeFamily(token.getFamilyId(), now);
       throw new BudgetInsightsException(ErrorCode.AUTH_SESSION_EXPIRED);
@@ -265,7 +286,27 @@ public class AuthServiceImpl implements AuthService {
             .orElseThrow(() -> new BudgetInsightsException(ErrorCode.AUTH_SESSION_EXPIRED));
     token.setRevokedAt(now);
     applyConfiguredRole(user);
-    return issue(user, token.getFamilyId());
+    return rotate(token, user);
+  }
+
+  /** A new token pair in the same sign-in, recorded as the replacement of {@code previous}. */
+  private AuthTokenResponse rotate(BiRefreshToken previous, BiAppUser user) {
+    Issued issued = issueRecorded(user, previous.getFamilyId());
+    previous.setReplacedById(issued.tokenId());
+    return issued.response();
+  }
+
+  /**
+   * The replacement of a rotated token when the phone never used it: still live (not revoked, not
+   * expired), so the sign-in is alive and nobody has refreshed with it. Empty when the replacement
+   * was used (a copied token), after a log-out, or for a token rotated before V1.33.0.
+   */
+  private Optional<BiRefreshToken> unusedReplacement(BiRefreshToken token, OffsetDateTime now) {
+    if (!token.getExpiresAt().isAfter(now) || token.getReplacedById() == null) return Optional.empty();
+    return refreshTokens
+        .findById(token.getReplacedById())
+        .filter(next -> next.getFamilyId().equals(token.getFamilyId()))
+        .filter(next -> next.getRevokedAt() == null && next.getExpiresAt().isAfter(now));
   }
 
   /**
@@ -335,24 +376,33 @@ public class AuthServiceImpl implements AuthService {
   // ---------------------------------------------------------------------------------
 
   private AuthTokenResponse issue(BiAppUser user, UUID familyId) {
+    return issueRecorded(user, familyId).response();
+  }
+
+  private record Issued(UUID tokenId, AuthTokenResponse response) {}
+
+  private Issued issueRecorded(BiAppUser user, UUID familyId) {
     byte[] raw = new byte[32];
     RANDOM.nextBytes(raw);
     String refresh = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
     OffsetDateTime now = OffsetDateTime.now();
-    refreshTokens.save(
-        BiRefreshToken.builder()
-            .userId(user.getId())
-            .familyId(familyId)
-            .tokenHash(JwtTokenService.sha256(refresh))
-            .expiresAt(now.plus(properties.getRefreshTokenTtl()))
-            .build());
-    return new AuthTokenResponse(
-        "Bearer",
-        tokens.issueAccessToken(user),
-        properties.getAccessTokenTtl().toSeconds(),
-        refresh,
-        properties.getRefreshTokenTtl().toSeconds(),
-        toDto(user));
+    BiRefreshToken saved =
+        refreshTokens.save(
+            BiRefreshToken.builder()
+                .userId(user.getId())
+                .familyId(familyId)
+                .tokenHash(JwtTokenService.sha256(refresh))
+                .expiresAt(now.plus(properties.getRefreshTokenTtl()))
+                .build());
+    return new Issued(
+        saved.getId(),
+        new AuthTokenResponse(
+            "Bearer",
+            tokens.issueAccessToken(user),
+            properties.getAccessTokenTtl().toSeconds(),
+            refresh,
+            properties.getRefreshTokenTtl().toSeconds(),
+            toDto(user)));
   }
 
   /**

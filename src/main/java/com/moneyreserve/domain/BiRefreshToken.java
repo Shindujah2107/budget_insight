@@ -19,8 +19,10 @@ import lombok.Setter;
  * A refresh token, stored only as a SHA-256 hash.
  *
  * <p>Tokens rotate: each refresh revokes the token used and issues a new one in the same {@code
- * familyId}. Presenting a token that was already rotated means two parties hold the same login —
- * the token has been copied — so the whole family is revoked and both must sign in again.
+ * familyId}. Presenting a token that was already rotated, after its replacement has been used,
+ * means two parties hold the same login (the token has been copied), so the whole family is
+ * revoked and both must sign in again. If the replacement was never used, the phone simply never
+ * received it, and the same login continues.
  */
 @Entity
 @Table(
@@ -56,6 +58,13 @@ public class BiRefreshToken {
 
   @Column(name = "revoked_at")
   private OffsetDateTime revokedAt;
+
+  /**
+   * The token that replaced this one when it was rotated (V1.33.0); null when not rotated, or
+   * rotated before V1.33.0. A replacement that was never used means the phone never got it.
+   */
+  @Column(name = "replaced_by_id")
+  private UUID replacedById;
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;

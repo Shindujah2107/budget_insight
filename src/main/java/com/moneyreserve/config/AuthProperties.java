@@ -39,8 +39,11 @@ public class AuthProperties {
   /** Access-token lifetime. Short, because an access token cannot be revoked before it expires. */
   private Duration accessTokenTtl = Duration.ofMinutes(15);
 
-  /** Refresh-token lifetime. Each use replaces the token, so this is the idle limit, not a cap. */
-  private Duration refreshTokenTtl = Duration.ofDays(30);
+  /**
+   * Refresh-token lifetime. Each use replaces the token with a new one for the full lifetime, so
+   * this is the idle limit (the app unused this long signs in again with a code), not a cap.
+   */
+  private Duration refreshTokenTtl = Duration.ofDays(90);
 
   /**
    * How long a just-rotated refresh token may be presented again without ending the sign-in. A
